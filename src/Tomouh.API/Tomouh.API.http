@@ -1,0 +1,6 @@
+@Tomouh.API_HostAddress = http://localhost:5098
+
+GET {{Tomouh.API_HostAddress}}/weatherforecast/
+Accept: application/json
+
+###
