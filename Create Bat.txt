@@ -1,0 +1,42 @@
+:: 1. Define the root path
+set ROOT_PATH=D:\myStack\repos\Tomouh
+
+:: 2. Create root directory and folders
+mkdir "%ROOT_PATH%"
+cd /d "%ROOT_PATH%"
+mkdir src tests
+
+:: 3. Create Solution
+dotnet new sln -n Tomouh
+
+:: 4. Create Source Projects
+cd src
+dotnet new classlib -n Tomouh.Domain
+dotnet new classlib -n Tomouh.Application
+dotnet new classlib -n Tomouh.Infrastructure
+dotnet new webapi -n Tomouh.API
+
+:: 5. Create Test Projects
+cd ..\tests
+dotnet new xunit -n Tomouh.Domain.UnitTests
+dotnet new xunit -n Tomouh.Application.UnitTests
+dotnet new xunit -n Tomouh.Infrastructure.UnitTests
+
+:: 6. Add projects to Solution
+cd ..
+dotnet sln add src\Tomouh.Domain\Tomouh.Domain.csproj
+dotnet sln add src\Tomouh.Application\Tomouh.Application.csproj
+dotnet sln add src\Tomouh.Infrastructure\Tomouh.Infrastructure.csproj
+dotnet sln add src\Tomouh.API\Tomouh.API.csproj
+dotnet sln add tests\Tomouh.Domain.UnitTests\Tomouh.Domain.UnitTests.csproj
+dotnet sln add tests\Tomouh.Application.UnitTests\Tomouh.Application.UnitTests.csproj
+
+:: 7. Add Project References
+dotnet add src\Tomouh.Application\Tomouh.Application.csproj reference src\Tomouh.Domain\Tomouh.Domain.csproj
+dotnet add src\Tomouh.Infrastructure\Tomouh.Infrastructure.csproj reference src\Tomouh.Application\Tomouh.Application.csproj
+dotnet add src\Tomouh.API\Tomouh.API.csproj reference src\Tomouh.Application\Tomouh.Application.csproj
+dotnet add src\Tomouh.API\Tomouh.API.csproj reference src\Tomouh.Infrastructure\Tomouh.Infrastructure.csproj
+
+:: 8. Add Test References
+dotnet add tests\Tomouh.Domain.UnitTests\Tomouh.Domain.UnitTests.csproj reference src\Tomouh.Domain\Tomouh.Domain.csproj
+dotnet add tests\Tomouh.Application.UnitTests\Tomouh.Application.UnitTests.csproj reference src\Tomouh.Application\Tomouh.Application.csproj
