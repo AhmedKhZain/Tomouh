@@ -1,5 +1,5 @@
-﻿using Common.Errors;
-using Common.ResultOf;
+﻿using Common.ResultOf;
+using Common.ResultOf.Errors;
 
 namespace Common.Extinctions;
 

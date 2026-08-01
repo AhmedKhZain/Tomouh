@@ -2,7 +2,7 @@
 
 namespace Tomouh.Application.Auth.Common;
 
-public class FullAuthenticationResult : AuthenticationResultBase
+public class FullAuthenticationResult : AuthenticationResult
 {
     public string Token { get; init; }
     public string RefreshToken { get; init; }

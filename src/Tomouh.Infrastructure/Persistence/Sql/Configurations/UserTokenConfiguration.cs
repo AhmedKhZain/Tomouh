@@ -51,11 +51,11 @@ public class UserTokenConfiguration : IEntityTypeConfiguration<UserToken>
         // Ignore computed property
         builder.Ignore(t => t.IsExpired);
 
-        // Foreign Key Relationship
-        builder.HasOne(t => t.User)
-            .WithMany()
-            .HasForeignKey(t => t.UserId)
-            .OnDelete(DeleteBehavior.Cascade);
+        //// Foreign Key Relationship
+        //builder.HasOne(t => t.User)
+        //    .WithMany()
+        //    .HasForeignKey(t => t.UserId)
+        //    .OnDelete(DeleteBehavior.Cascade);
 
         // Indexes for performance
         builder.HasIndex(t => t.TokenHash);

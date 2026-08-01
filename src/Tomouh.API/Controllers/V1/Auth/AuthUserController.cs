@@ -4,6 +4,11 @@ using MediatR;
 using Microsoft.AspNetCore.Mvc;
 using Tomouh.API.Filters;
 using Tomouh.Application.Auth.Queries.CheckEmailExistence;
+using Tomouh.Application.Auth.Queries.ConfirmEmail;
+using Tomouh.Application.Auth.Queries.ForgotPassword;
+using Tomouh.Application.Auth.Queries.Login;
+using Tomouh.Application.Auth.Queries.RefreshToken;
+using Tomouh.Application.Auth.Queries.ResetPassword;
 using Tomouh.Contracts.Auth;
 
 namespace Tomouh.API.Controllers.V1.Auth;
@@ -66,11 +71,11 @@ public class AuthUserController : ApiControllerBase
     /// </remarks>
     [HttpPost("login")]
     public async Task<IActionResult> Login(
-        [FromBody] LoginUserCommand command,
+        [FromBody] LoginQuery query,
         CancellationToken cancellationToken = default
         )
     {
-        var result = await _sender.Send(command, cancellationToken);
+        var result = await _sender.Send(query, cancellationToken);
         return MapResult(result);
     }
 
@@ -84,10 +89,11 @@ public class AuthUserController : ApiControllerBase
     [RequireIdempotencyHeader]
     public async Task<IActionResult> RegisterWithGoogle(
         [FromHeader(Name = "X-Idempotency-Key")] Guid idempotencyKey,
-        [FromBody] RegisterWithGoogleCommand command,
+        [FromBody] GoogleAuthRequest request,
         CancellationToken cancellationToken = default
         )
     {
+        var command = request.ToRegisterCommand(idempotencyKey);
         var result = await _sender.Send(command, cancellationToken);
         return MapResult(result);
     }
@@ -96,15 +102,19 @@ public class AuthUserController : ApiControllerBase
     /// Authenticates an existing user profile or logs them in directly using an external Google OAuth identity verification token payload.
     /// </summary>
     /// <remarks>
-    /// **Idempotent:** No. Generates fresh cryptographic authorization session token objects upon each invocation request.
+    /// **Idempotent:** Yes. Generates fresh cryptographic authorization session token objects upon each invocation request.
     /// </remarks>
+
     [HttpPost("login/google")]
+    [RequireIdempotencyHeader]
     public async Task<IActionResult> LoginWithGoogle(
-        [FromBody] LoginWithGoogleCommand command,
+        [FromHeader(Name = "X-Idempotency-Key")] Guid idempotencyKey,
+        [FromBody] GoogleAuthRequest request,
         CancellationToken cancellationToken = default
         )
     {
-        var result = await _sender.Send(command, cancellationToken);
+        var query = request.ToLoginQuery(idempotencyKey);
+        var result = await _sender.Send(query, cancellationToken);
         return MapResult(result);
     }
 
@@ -119,7 +129,7 @@ public class AuthUserController : ApiControllerBase
         CancellationToken cancellationToken = default
         )
     {
-        var command = new RefreshTokenCommand();
+        var command = new RefreshTokenQuery();
         var result = await _sender.Send(command, cancellationToken);
         return MapResult(result);
     }
@@ -138,7 +148,7 @@ public class AuthUserController : ApiControllerBase
         CancellationToken cancellationToken = default
         )
     {
-        var command = new ConfirmEmailCommand(request.UserEmail, request.Token, idempotencyKey);
+        var command = new ConfirmEmailCommand(request.Token, idempotencyKey);
         var result = await _sender.Send(command, cancellationToken);
         return MapResult(result);
     }

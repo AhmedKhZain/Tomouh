@@ -57,7 +57,7 @@
         public static bool TryFromValue(int value, out TEnum? result)
             => _fromValueCache.Value.TryGetValue(value, out result);
 
-        public static bool TryFromName(string name, bool caseSensitive = false, out TEnum? result)
+        public static bool TryFromName(string name, out TEnum? result, bool caseSensitive = false)
         {
             var cache = caseSensitive ? _fromNameCaseSensitiveCache.Value : _fromNameIgnoreCaseCache.Value;
             return cache.TryGetValue(name, out result);

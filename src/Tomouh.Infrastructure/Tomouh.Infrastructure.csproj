@@ -1,11 +1,11 @@
 ﻿<Project Sdk="Microsoft.NET.Sdk">
 
   <ItemGroup>
-    <ProjectReference Include="..\Common.Infrastructure\Common.Infrastructure.csproj" />
     <ProjectReference Include="..\Tomouh.Application\Tomouh.Application.csproj" />
   </ItemGroup>
 
   <ItemGroup>
+    <PackageReference Include="Google.Apis.Auth" Version="1.75.0" />
     <PackageReference Include="Microsoft.EntityFrameworkCore" Version="10.0.10" />
     <PackageReference Include="Microsoft.EntityFrameworkCore.Design" Version="10.0.10">
       <PrivateAssets>all</PrivateAssets>
@@ -16,9 +16,12 @@
       <PrivateAssets>all</PrivateAssets>
       <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
     </PackageReference>
+    <PackageReference Include="Microsoft.Extensions.Caching.StackExchangeRedis" Version="10.0.10" />
+    <PackageReference Include="Microsoft.Extensions.Identity.Core" Version="10.0.10" />
     <PackageReference Include="MongoDB.Bson" Version="3.10.0" />
     <PackageReference Include="MongoDB.Driver" Version="3.10.0" />
     <PackageReference Include="MongoDB.Extensions.Context" Version="5.8.0" />
+    <PackageReference Include="StackExchange.Redis" Version="3.0.17" />
   </ItemGroup>
 
   <PropertyGroup>

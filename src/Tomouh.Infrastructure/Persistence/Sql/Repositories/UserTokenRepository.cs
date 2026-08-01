@@ -83,5 +83,17 @@ namespace Tomouh.Infrastructure.Persistence.Sql.Repositories
 
             return query;
         }
+
+        public async Task AddAsync(UserToken token, CancellationToken cancellationToken = default)
+        {
+            await _dbContext.UserTokens.AddAsync(token, cancellationToken);
+            await _dbContext.SaveChangesAsync(cancellationToken);
+        }
+
+        public async Task UpdateAsync(UserToken token, CancellationToken cancellationToken = default)
+        {
+            _dbContext.UserTokens.Update(token);
+            await _dbContext.SaveChangesAsync(cancellationToken);
+        }
     }
 }

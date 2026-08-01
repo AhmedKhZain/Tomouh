@@ -24,4 +24,14 @@ public interface IUserTokenRepository
         bool? isRevoked = null,
         bool includeExpired = false,
         CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// Persists a new UserToken entity to the data store.
+    /// </summary>
+    Task AddAsync(UserToken token, CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// Updates an existing UserToken entity and persists changes to the data store.
+    /// </summary>
+    Task UpdateAsync(UserToken token, CancellationToken cancellationToken = default);
 }

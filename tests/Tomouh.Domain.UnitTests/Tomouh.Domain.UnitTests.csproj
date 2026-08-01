@@ -22,4 +22,8 @@
     <ProjectReference Include="..\..\src\Tomouh.Domain\Tomouh.Domain.csproj" />
   </ItemGroup>
 
+  <ItemGroup>
+    <Folder Include="Auth\" />
+  </ItemGroup>
+
 </Project>

@@ -8,6 +8,10 @@ public class DomainEventCollector : IDomainEventCollector
     private readonly List<IDomainEvent> _domainEvents = new();
     private readonly List<IIntegrationEvent> _integrationEvents = new();
 
+    public bool AnyIntgrationEvents => _integrationEvents.Count > 0;
+
+    public bool AnyDomainEvents => _domainEvents.Count > 0;
+
     public IReadOnlyList<IDomainEvent> GetDomainEvents() => _domainEvents.AsReadOnly();
     public IReadOnlyList<IIntegrationEvent> GetIntegrationEvents() => _integrationEvents.AsReadOnly();
 
@@ -43,4 +47,5 @@ public class DomainEventCollector : IDomainEventCollector
         _integrationEvents.Clear();
         return events;
     }
+
 }

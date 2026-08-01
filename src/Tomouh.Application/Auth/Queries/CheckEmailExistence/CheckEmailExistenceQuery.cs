@@ -5,7 +5,7 @@ using Tomouh.Application.Auth.Common;
 namespace Tomouh.Application.Auth.Queries.CheckEmailExistence;
 
 public record CheckEmailExistenceQuery(string Email, Guid RequestId)
-    : IQuery<ResultOf<AuthenticationResultBase>>,
+    : IQuery<ResultOf<AuthenticationResult>>,
     IIdempotentRequest,
     IEventsIncludedRequest,
     IValidateableRequest;

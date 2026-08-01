@@ -27,10 +27,15 @@ public class AuditLog : IAudit<string>
     /// </summary>
     /// <param name="creatorId">The unique identifier of the performing user or entity.</param>
     /// <param name="actorType">The category of actor performing the action. Defaults to <see cref="CreationActorType.User"/>.</param>
-    public void SetCreator(Guid? creatorId, CreationActorType actorType = CreationActorType.User)
+    public void SetCreator(Guid? creatorId = null)
     {
+        if (creatorId == null)
+        {
+            ActorType = CreationActorType.System;
+            return;
+        }
         CreatedBy = creatorId;
-        ActorType = actorType;
+        ActorType = CreationActorType.User;
     }
 
     /// <summary>

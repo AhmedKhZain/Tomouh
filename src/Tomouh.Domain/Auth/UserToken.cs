@@ -8,7 +8,6 @@ public class UserToken
     public Guid Id { get; private set; }
     public string TokenHash { get; private set; }
     public Guid UserId { get; private set; }
-    public User User { get; private set; }
     public TokenType TokenType { get; private set; }
     public bool IsUsed { get; private set; }
     public DateTime? UsedAt { get; private set; }

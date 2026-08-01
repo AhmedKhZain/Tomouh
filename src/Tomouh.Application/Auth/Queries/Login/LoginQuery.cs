@@ -7,4 +7,4 @@ namespace Tomouh.Application.Auth.Queries.Login;
 public record LoginQuery(
     string Email,
     string Password)
-    : IQuery<ResultOf<AuthenticationResultBase>>;
+    : IQuery<ResultOf<AuthenticationResult>>;

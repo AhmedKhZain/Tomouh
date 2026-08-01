@@ -2,6 +2,7 @@
 using MongoDB.Driver;
 using Tomouh.Application.Common.Interfaces;
 using Tomouh.Domain.Auth;
+using Tomouh.Domain.UserInterests;
 
 namespace Tomouh.Infrastructure.Persistence.NoSql;
 
@@ -13,6 +14,9 @@ public class TomouhMongoContext : IMongoEntitiesTracker
     private readonly IMongoDatabase _database;
     private readonly IDomainEventCollector _eventCollector;
 
+    private const string UsersCollectionName = "Users";
+    private const string UserInterestsCollectionName = "UserInterests";
+
     /// <summary>
     /// Internal collection of tracked aggregates using reference equality to guarantee safe memory tracking.
     /// </summary>
@@ -23,17 +27,26 @@ public class TomouhMongoContext : IMongoEntitiesTracker
     /// </summary>
     /// <param name="client">The MongoDB client interface.</param>
     /// <param name="eventCollector">The domain event collector service.</param>
-    public TomouhMongoContext(IMongoClient client, IDomainEventCollector eventCollector)
+    public TomouhMongoContext(
+        IMongoClient client,
+        MongoUrl mongoUrl,
+        IDomainEventCollector eventCollector)
     {
-        _database = client.GetDatabase("TomouhAuthDb");
+        var databaseName = mongoUrl.DatabaseName ?? "TomouhAuthDb";
+
+        _database = client.GetDatabase(databaseName);
         _eventCollector = eventCollector;
     }
 
     /// <summary>
     /// Gets the MongoDB collection for <see cref="User"/> aggregates.
     /// </summary>
-    public IMongoCollection<User> Users => _database.GetCollection<User>("Users");
+    public IMongoCollection<User> Users => _database.GetCollection<User>(UsersCollectionName);
 
+    /// <summary>
+    /// Gets the MongoDB collection for <see cref="UserInterest"/> aggregates.
+    /// </summary>
+    public IMongoCollection<UserInterest> UserInterests => _database.GetCollection<UserInterest>(UserInterestsCollectionName);
 
     /// <summary>
     /// Registers an aggregate root to the in-memory change tracker.
@@ -147,6 +160,7 @@ public class TomouhMongoContext : IMongoEntitiesTracker
     {
         return _trackedEntities.OfType<T>();
     }
+
 
 
 }

@@ -62,7 +62,9 @@ public static class UserMongoConfiguration
                 cm.GetMemberMap(x => x.Email)?.SetElementName("email");
                 cm.GetMemberMap(x => x.TFA)?.SetElementName("tfa");
                 cm.GetMemberMap(x => x.Status)?.SetElementName("status");
-
+                cm.GetMemberMap(x => x.AuthProvider)?.SetElementName("authProvider");
+                cm.GetMemberMap(x => x.ProviderSubjectId)?.SetElementName("providerSubjectId");
+                cm.GetMemberMap(x => x.ProfilePhotoPath)?.SetElementName("profilePhotoPath");
                 // Unmap Calculated / Domain State Properties
                 cm.UnmapProperty(a => a.FullName);
                 cm.UnmapProperty(a => a.ShowName);

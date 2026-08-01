@@ -105,4 +105,9 @@ public class UserRepository : IUserRepository
 
         return null;
     }
+
+    public Task<User> GetByProviderSubjectIdAsync(string provider, object subjectId, CancellationToken cancellationToken)
+    {
+        throw new NotImplementedException();
+    }
 }

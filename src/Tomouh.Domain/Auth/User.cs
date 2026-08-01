@@ -1,6 +1,6 @@
 ﻿using Common.AuditLogs;
 using Common.BaseTypes;
-using Common.Enums;
+using Common.DataConvrters;
 using Common.Markups;
 using Common.ResultOf;
 using Common.Services;
@@ -8,6 +8,7 @@ using MongoDB.Bson.Serialization.Attributes;
 using System.Text.Json;
 using System.Text.Json.Serialization;
 using Tomouh.Domain.Auth.Events;
+using Tomouh.Domain.Common.Events;
 
 namespace Tomouh.Domain.Auth;
 
@@ -26,25 +27,79 @@ public class User : AuditableAggregateRoot<Guid>, IHasCustomSerializationOptions
     public string ShowName => Name.ShowName;
 
 
-    private string _passwordHash = null!;
+    public string? AuthProvider { get; private set; } // "Local", "Google", etc.
+    public string? ProviderSubjectId { get; private set; } // Google Unique Subject ID
 
+    private string? _passwordHash;
+    public string? ProfilePhotoPath { get; private set; }
 
     private readonly List<UserProfile> _profiles = new();
     public IReadOnlyCollection<UserProfile> Profiles => _profiles.AsReadOnly();
 
-    public User(
+    // Private Constructor للـ Standard Registration
+    private User(
         string showName,
         string firstName,
         string lastName,
-        string email)
+        string email,
+        string authProvider = "Local",
+        string? profilePhotoPath = null,
+        string? providerSubjectId = null)
         : base(Guid.NewGuid(), null)
     {
         Name = new Name(showName, firstName, lastName);
-        Email = new ConfirmedEmail(email);
+        bool isConfirmed = authProvider != "Local";
+        Email = new ConfirmedEmail(email, isEmailConfirmed: isConfirmed, confirmedAt: isConfirmed ? DateTime.UtcNow : null);
+
         TFA = new TFAStatus();
         Status = new AccountStatus();
+        AuthProvider = authProvider;
+        ProviderSubjectId = providerSubjectId;
+        ProfilePhotoPath = profilePhotoPath;
         _profiles = new List<UserProfile>();
         AddProfile(Role.User, Id);
+    }
+
+    public static ResultOf<User> CreateLocal(
+        string showName,
+        string firstName,
+        string lastName,
+        string email,
+        string password,
+        IPasswordHasher passwordHasher)
+    {
+        var user = new User(showName, firstName, lastName, email, authProvider: "Local");
+        var passwordResult = user.SetNewPassword(password, passwordHasher);
+
+        if (passwordResult.IsFailure)
+        {
+            return passwordResult.Errors;
+        }
+
+        return user;
+    }
+
+    public static User CreateFromGoogle(
+        string googleSubjectId,
+        string email,
+        string firstName,
+        string lastName,
+        string? profilePhotoPath = null,
+        string? showName = null)
+    {
+        var effectiveShowName = string.IsNullOrWhiteSpace(showName)
+            ? $"{firstName} {lastName}".Trim()
+            : showName;
+
+        return new User(
+            showName: effectiveShowName,
+            firstName: firstName,
+            lastName: lastName,
+            email: email,
+            authProvider: "Google",
+            providerSubjectId: googleSubjectId,
+            profilePhotoPath: profilePhotoPath
+        );
     }
 
     private User() : base() { }
@@ -54,22 +109,26 @@ public class User : AuditableAggregateRoot<Guid>, IHasCustomSerializationOptions
     [BsonConstructor]
     [JsonConstructor]
     private User(
-    Guid id,
-    Name name,
-    ConfirmedEmail email,
-    TFAStatus tfa,
-    AccountStatus status,
-    string passwordHash,
-    List<UserProfile> profiles,
-    DateTime? lastUpdate,
-    DateTime createdAt,
-    Guid? createdBy) : base(id, null)
+            Guid id,
+            Name name,
+            ConfirmedEmail email,
+            TFAStatus tfa,
+            AccountStatus status,
+            string? passwordHash,
+            string? authProvider,
+            string? providerSubjectId,
+            List<UserProfile> profiles,
+            DateTime? lastUpdate,
+            DateTime createdAt,
+            Guid? createdBy) : base(id, null)
     {
         Name = name;
         Email = email;
         TFA = tfa;
         Status = status;
         _passwordHash = passwordHash;
+        AuthProvider = authProvider ?? "Local";
+        ProviderSubjectId = providerSubjectId;
         _profiles = profiles ?? new List<UserProfile>();
         CreatedAt = createdAt;
         LastUpdate = lastUpdate;
@@ -286,7 +345,6 @@ public class User : AuditableAggregateRoot<Guid>, IHasCustomSerializationOptions
     public ResultOf<Done> ConfirmEmail(
         UserToken token,
         string tokenValue,
-        Guid executedByUserId,
         ITokenHasher hasher)
     {
         if (token is null || token.TokenType == TokenType.EmailConfirmation)
@@ -303,7 +361,7 @@ public class User : AuditableAggregateRoot<Guid>, IHasCustomSerializationOptions
             editedEntityName: NameOfUser,
             customEntityId: Id.ToString()
         );
-        audit.SetCreator(executedByUserId);
+        audit.SetCreator(Id);
 
         var markUsedResult = token.MarkUsed(tokenValue, hasher);
         if (markUsedResult.IsFailure)
@@ -311,7 +369,7 @@ public class User : AuditableAggregateRoot<Guid>, IHasCustomSerializationOptions
             return markUsedResult.Errors;
         }
 
-        Email = Email with { IsEmailConfirmed = true, ConfirmedAt = DateTime.UtcNow };
+        Email = new ConfirmedEmail(Email.Email, true, DateTime.UtcNow);
         AddIntegrationEvent(new AuditLogedEvent(audit));
         MarkUpdated();
         return Done.Default;
@@ -373,7 +431,7 @@ public class User : AuditableAggregateRoot<Guid>, IHasCustomSerializationOptions
 
         if (email is not null && !email.Equals(Email.Email, StringComparison.OrdinalIgnoreCase))
         {
-            Email = new ConfirmedEmail(email, IsEmailConfirmed: false, ConfirmedAt: null);
+            Email = new ConfirmedEmail(email, isEmailConfirmed: false, confirmedAt: null);
         }
 
         MarkUpdated();
@@ -405,7 +463,7 @@ public class User : AuditableAggregateRoot<Guid>, IHasCustomSerializationOptions
 
         );
 
-        TFA = TFA with { IsTFAEnabled = isEnabled, TFAEnabledAt = isEnabled ? DateTime.UtcNow : null };
+        TFA = new TFAStatus(isEnabled, isEnabled ? DateTime.UtcNow : null);
 
         MarkUpdated();
         AddIntegrationEvent(new AuditLogedEvent(audit));
@@ -441,7 +499,12 @@ public class User : AuditableAggregateRoot<Guid>, IHasCustomSerializationOptions
             customEntityId: Id.ToString()
         );
 
-        Status = Status with { IsActive = isActive };
+        Status = new AccountStatus(
+            isActive,
+            Status.IsCommentingDisabled,
+            Status.CommentingDisabledAt,
+            Status.IsBlocked,
+            Status.BlockedAt);
 
         audit.SetCreator(executedByUserId);
         AddIntegrationEvent(new AuditLogedEvent(audit));
@@ -470,11 +533,12 @@ public class User : AuditableAggregateRoot<Guid>, IHasCustomSerializationOptions
             customEntityId: Id.ToString()
         );
 
-        Status = Status with
-        {
-            IsCommentingDisabled = isDisabled,
-            CommentingDisabledAt = isDisabled ? DateTime.UtcNow : null
-        };
+        Status = new AccountStatus(
+            Status.IsActive,
+            isDisabled,
+            isDisabled ? DateTime.UtcNow : null,
+            Status.IsBlocked,
+            Status.BlockedAt);
 
         audit.SetCreator(executedByUserId);
         AddIntegrationEvent(new AuditLogedEvent(audit));
@@ -503,12 +567,12 @@ public class User : AuditableAggregateRoot<Guid>, IHasCustomSerializationOptions
             customEntityId: Id.ToString()
         );
 
-        Status = Status with
-        {
-            IsBlocked = isBlocked,
-            BlockedAt = isBlocked ? DateTime.UtcNow : null,
-            IsActive = !isBlocked
-        };
+        Status = new AccountStatus(
+            !isBlocked,
+            Status.IsCommentingDisabled,
+            Status.CommentingDisabledAt,
+            isBlocked,
+            isBlocked ? DateTime.UtcNow : null);
 
         audit.SetCreator(executedByUserId);
         AddIntegrationEvent(new AuditLogedEvent(audit));
@@ -531,27 +595,85 @@ public class User : AuditableAggregateRoot<Guid>, IHasCustomSerializationOptions
 
 #region Value Objects
 
-public record ConfirmedEmail(
-    [property: EqualityComponent] string Email,
-    [property: EqualityComponent] bool IsEmailConfirmed = false,
-    DateTime? ConfirmedAt = null
-) : ValueObject;
-public record TFAStatus(
-    [property: EqualityComponent] bool IsTFAEnabled = false,
-    DateTime? TFAEnabledAt = null
-) : ValueObject;
-public record AccountStatus(
-    [property: EqualityComponent] bool IsActive = true,
-    [property: EqualityComponent] bool IsCommentingDisabled = false,
-    DateTime? CommentingDisabledAt = null,
-    [property: EqualityComponent] bool IsBlocked = false,
-    DateTime? BlockedAt = null
-) : ValueObject;
-public record Name(
-    [property: EqualityComponent] string ShowName,
-    [property: EqualityComponent] string FirstName,
-    [property: EqualityComponent] string LastName
-) : ValueObject;
+public class ConfirmedEmail : ValueObject
+{
+    [EqualityComponent]
+    public string Email { get; init; }
 
+    [EqualityComponent]
+    public bool IsEmailConfirmed { get; init; }
+
+    public DateTime? ConfirmedAt { get; init; }
+
+    public ConfirmedEmail(string email, bool isEmailConfirmed = false, DateTime? confirmedAt = null)
+    {
+        Email = email;
+        IsEmailConfirmed = isEmailConfirmed;
+        ConfirmedAt = confirmedAt;
+    }
+}
+
+public class TFAStatus : ValueObject
+{
+    [EqualityComponent]
+    public bool IsTFAEnabled { get; init; }
+
+    public DateTime? TFAEnabledAt { get; init; }
+
+    public TFAStatus(bool isTFAEnabled = false, DateTime? tfaEnabledAt = null)
+    {
+        IsTFAEnabled = isTFAEnabled;
+        TFAEnabledAt = tfaEnabledAt;
+    }
+}
+
+public class AccountStatus : ValueObject
+{
+    [EqualityComponent]
+    public bool IsActive { get; init; }
+
+    [EqualityComponent]
+    public bool IsCommentingDisabled { get; init; }
+
+    public DateTime? CommentingDisabledAt { get; init; }
+
+    [EqualityComponent]
+    public bool IsBlocked { get; init; }
+
+    public DateTime? BlockedAt { get; init; }
+
+    public AccountStatus(
+        bool isActive = true,
+        bool isCommentingDisabled = false,
+        DateTime? commentingDisabledAt = null,
+        bool isBlocked = false,
+        DateTime? blockedAt = null)
+    {
+        IsActive = isActive;
+        IsCommentingDisabled = isCommentingDisabled;
+        CommentingDisabledAt = commentingDisabledAt;
+        IsBlocked = isBlocked;
+        BlockedAt = blockedAt;
+    }
+}
+
+public class Name : ValueObject
+{
+    [EqualityComponent]
+    public string ShowName { get; init; }
+
+    [EqualityComponent]
+    public string FirstName { get; init; }
+
+    [EqualityComponent]
+    public string LastName { get; init; }
+
+    public Name(string showName, string firstName, string lastName)
+    {
+        ShowName = showName;
+        FirstName = firstName;
+        LastName = lastName;
+    }
+}
 
 #endregion

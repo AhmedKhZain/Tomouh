@@ -11,4 +11,7 @@ public interface IDomainEventCollector
 
     IReadOnlyList<IDomainEvent> DequeueDomainEvents();
     IReadOnlyList<IIntegrationEvent> DequeueIntegrationEvents();
+
+    bool AnyIntgrationEvents { get; }
+    bool AnyDomainEvents { get; }
 }

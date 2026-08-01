@@ -1,4 +1,4 @@
-﻿using Common.Errors;
+﻿using Common.ResultOf.Errors;
 
 namespace Tomouh.Domain.Auth;
 

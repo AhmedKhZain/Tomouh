@@ -1,6 +1,5 @@
 <Solution>
   <Folder Name="/src/">
-    <Project Path="src/Common.Infrastructure/Common.Infrastructure.csproj" />
     <Project Path="src/Common/Common.csproj" />
     <Project Path="src/Tomouh.API/Tomouh.API.csproj" />
     <Project Path="src/Tomouh.Application/Tomouh.Application.csproj" />

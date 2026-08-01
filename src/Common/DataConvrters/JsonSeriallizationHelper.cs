@@ -63,6 +63,18 @@ public static class JsonSerializationHelper
 
         return JsonSerializer.Deserialize<T>(json, options);
     }
+    /// <summary>
+    /// Deserializes a JSON string dynamically using the specified <paramref name="type"/>.
+    /// </summary>
+    public static object? Deserialize(this string? json, Type type)
+    {
+        if (string.IsNullOrWhiteSpace(json))
+            return null;
+
+        var options = GetOptionsForType(type);
+
+        return JsonSerializer.Deserialize(json, type, options);
+    }
 
     /// <summary>
     /// Resolves and caches the <see cref="JsonSerializerOptions"/> for a given type.

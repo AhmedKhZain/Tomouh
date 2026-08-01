@@ -60,7 +60,7 @@ public class Role : SmartEnum<Role>
                     return null;
 
                 // استخدام FromName المدمجة في Ardalis.SmartEnum
-                if (TryFromName(roleName, caseSensitive: false, out var role))
+                if (TryFromName(roleName, out var role, caseSensitive: false))
                 {
                     return role;
                 }

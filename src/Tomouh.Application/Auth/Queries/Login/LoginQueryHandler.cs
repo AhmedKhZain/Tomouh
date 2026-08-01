@@ -1,44 +1,44 @@
-﻿using Common.Errors;
-using Common.Extinctions;
+﻿using Common.Extinctions;
 using Common.ResultOf;
+using Common.ResultOf.Errors;
 using Common.Services;
 using MediatR;
 using Microsoft.AspNetCore.Http;
 using Tomouh.Application.Auth.Common;
-using Tomouh.Application.Common.Interfaces;
+using Tomouh.Application.Common.Interfaces.Services;
 using Tomouh.Domain.Auth;
-using static Tomouh.Application.Auth.AuthenticationCommon;
+using Tomouh.Domain.Auth.Repositories;
+using static Tomouh.Application.Auth.Common.AuthenticationCommon;
 
 namespace Tomouh.Application.Auth.Queries.Login;
 
 public class LoginQueryHandler(
-    ITokenGenerator _tokenGenerator,
+    IJwtGenerator _tokenGenerator,
     IPasswordHasher _passwordHasher,
     ITokenHasher _tokenHasher,
     ICacheService<User> _cacheService,
+    IUserTokenRepository _tokenRepository,
     IHttpContextAccessor _contextAccessor)
-        : IRequestHandler<LoginQuery, ResultOf<AuthenticationResultBase>>
+        : IRequestHandler<LoginQuery, ResultOf<AuthenticationResult>>
 {
-    public async Task<ResultOf<AuthenticationResultBase>> Handle(LoginQuery query, CancellationToken cancellationToken)
+    public async Task<ResultOf<AuthenticationResult>> Handle(LoginQuery query, CancellationToken cancellationToken)
     {
         try
         {
             var user = await _cacheService.GetAsync(cacheKey: UserOptimisticLoadingCachePrefix + query.Email);
 
-
             if (user is null)
-                return AuthenticationErrors.SomethingGoseWrongEnterEmailAgain;
+                return AuthenticationErrors.SomethingGoesWrongEnterEmailAgain;
 
-            var PasswordCheckResult = user.IsCorrectPasswordHash(query.Password, _passwordHasher);
+            var passwordCheckResult = user.IsCorrectPasswordHash(query.Password, _passwordHasher);
 
-            if (PasswordCheckResult.IsFailure)
-                return PasswordCheckResult.Errors;
+            if (passwordCheckResult.IsFailure)
+                return passwordCheckResult.Errors;
 
-            var isPasswordCorrect = PasswordCheckResult.Value;
+            var isPasswordCorrect = passwordCheckResult.Value;
 
             if (!isPasswordCorrect)
                 return AuthenticationErrors.InvalidCredentials;
-
 
             if (user.TFA.IsTFAEnabled)
             {
@@ -46,23 +46,40 @@ public class LoginQueryHandler(
                 if (tfaCreateResult.IsFailure)
                     return tfaCreateResult.Errors;
 
-                return ((AuthenticationResultBase)
+                return ((AuthenticationResult)
                     new TFANeededAuthenticationResult(user)).AsPartial();
             }
-
 
             var token = _tokenGenerator.GenerateUserJwtToken(user);
 
             var refreshTokenCreationResult = user.GenerateToken(TokenType.RefreshToken, _tokenHasher, out var refreshToken);
 
-
             if (refreshTokenCreationResult.IsFailure)
                 return refreshTokenCreationResult.Errors;
 
-            _contextAccessor.HttpContext.Response.Cookies.Append(AccessTokenCookieName, token);
-            _contextAccessor.HttpContext.Response.Cookies.Append(RefreshTokenCookieName, refreshToken);
+            var refreshTokenEntity = refreshTokenCreationResult.Value;
+            await _tokenRepository.AddAsync(refreshTokenEntity, cancellationToken);
 
-            return ((AuthenticationResultBase)
+            var accessTokenCookieOptions = new CookieOptions
+            {
+                Expires = DateTimeOffset.UtcNow.Add(AccessTokenCookieExpiration),
+                HttpOnly = true,
+                Secure = true,
+                SameSite = SameSiteMode.Strict
+            };
+
+            var refreshTokenCookieOptions = new CookieOptions
+            {
+                Expires = DateTimeOffset.UtcNow.Add(RefreshTokenCookieExpiration),
+                HttpOnly = true,
+                Secure = true,
+                SameSite = SameSiteMode.Strict
+            };
+
+            _contextAccessor.HttpContext?.Response.Cookies.Append(AccessTokenCookieName, token, accessTokenCookieOptions);
+            _contextAccessor.HttpContext?.Response.Cookies.Append(RefreshTokenCookieName, refreshToken, refreshTokenCookieOptions);
+
+            return ((AuthenticationResult)
                 new FullAuthenticationResult(user, token, refreshToken)).AsDone();
         }
         catch (Exception ex)
@@ -72,6 +89,5 @@ public class LoginQueryHandler(
                 description: ex.Message
             );
         }
-
     }
 }
