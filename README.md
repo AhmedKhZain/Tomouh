@@ -25,7 +25,7 @@ The platform connects students with funding organizations, enabling them to disc
 |---|---|
 | **Microservices Architecture** | Fully decoupled domain services with independent data stores and lifecycles. |
 | **Polyglot Persistence** | MS SQL Server for relational/transactional data; MongoDB for high-throughput, flexible-schema data. |
-| **Asymmetric Security** | The Auth service issues JWT access tokens signed via an **RS256 private key**. Every downstream service validates them using only the **public key** — no shared secrets, no network calls on each request. |
+| **Asymmetric Security** | The Auth service issues JWT access tokens signed via an **ECDsa ECCurve.NamedCurves.nistP256 private key**. Every downstream service validates them using only the **public key** — no shared secrets, no network calls on each request. |
 | **Event-Driven Communication** | Services communicate asynchronously via **RabbitMQ** topics/queues, improving resilience and scalability. |
 | **Hybrid Cloud Deployment** | Cost-optimized setup blending Azure free tier with free-tier container platforms for long-running services. |
 
@@ -34,46 +34,22 @@ The platform connects students with funding organizations, enabling them to disc
 ## 🖥️ System Architecture Diagram
 
 ```
-                          ┌─────────────────────────┐
-                          │     React Frontend      │
-                          └───────────┬─────────────┘
-                                      │ HTTPS
-                          ┌───────────▼─────────────┐
-                          │      API Gateway        │
-                          │  (Routing / AuthN AuthZ) │
-                          └──────┬───────┬──────────┘
-                                 │       │
-                 ┌───────────────┘       └───────────────┐
-                 │                                       │
-    ┌────────────▼─────────────┐            ┌────────────▼─────────────┐
-    │       Auth Service       │            │ Scholarship & Eligibility │
-    │      (SSO / Identity)    │            │        Service            │
-    └────────────┬─────────────┘            └────────────┬─────────────┘
-                 │                                       │
-        ┌────────▼────────┐                    ┌─────────▼─────────┐
-        │     MongoDB      │                    │  MS SQL Server    │
-        └─────────────────┘                    └───────────────────┘
-                 │                                       │
-    ┌────────────▼─────────────┐            ┌────────────▼─────────────┐
-    │  Funding Organizations   │            │    Custom Notebook       │
-    │         Service          │            │         Service          │
-    └────────────┬─────────────┘            └────────────┬─────────────┘
-                 │                                       │
-        ┌────────▼────────┐                    ┌─────────▼─────────┐
-        │  Relational DB   │                    │     MongoDB       │
-        └─────────────────┘                    └───────────────────┘
-
-                 ┌───────────────────────────────────────────────┐
-                 │   Comments & Community Service                │
-                 │            ┌───────────────────────┐          │
-                 │            │   AI Moderation API   │          │
-                 │            │   (content safety)    │          │
-                 │            └───────────────────────┘          │
-                 └────────────────────────┬──────────────────────┘
-                                          │
-                                 ┌────────▼─────────┐
-                                 │     MongoDB       │
-                                 └───────────────────┘
+                                ┌──────────────────────────────┐
+                                │        React Frontend        │
+                                └──────────────┬───────────────┘
+                                               │ HTTPS
+                                ┌──────────────▼───────────────┐
+                                │         API Gateway          │
+                                │   (Routing / AuthN / AuthZ)  │
+                                └──────────────┬───────────────┘
+                                               │
+        ┌──────────────┬──────────────┬────────┴─────────────┬──────────────┐
+        │              │              │                      │
+┌───────▼──────┐ ┌─────▼──────────┐ ┌─▼─────────────┐ ┌──────▼────────┐
+│ Auth Service │ │Scholarship &   │ │  Custom       │ │ Comments &    │
+│ (SSO)        │ │Eligibility     │ │  Notebook     │ │ Community     │
+│              │ │Service         │ │  Service      │ │ Service       │
+└──────────────┘ └────────────────┘ └───────────────┘ └───────────────┘
 
   All services communicate asynchronously through RabbitMQ (event bus).
 ```
