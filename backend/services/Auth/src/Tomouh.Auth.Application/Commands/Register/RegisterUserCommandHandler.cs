@@ -1,0 +1,76 @@
+﻿using MediatR;
+using Microsoft.AspNetCore.Http;
+using Tomouh.Auth.Application.Common;
+using Tomouh.Auth.Application.Interfaces;
+using Tomouh.Auth.Domain.Entities;
+using Tomouh.Auth.Domain.Enums;
+using Tomouh.Auth.Domain.Interfaces;
+using Tomouh.Shared.Kernel.Extensions;
+using Tomouh.Shared.Kernel.ResultOf;
+using Tomouh.Shared.Kernel.ResultOf.Errors;
+using static Tomouh.Auth.Application.Common.AuthenticationCommon;
+
+namespace Tomouh.Auth.Application.Commands.Register;
+
+public class RegisterUserCommandHandler(
+    IUserRepository _userRepository,
+    IUserTokenRepository _tokenRepository,
+    IPasswordHasher _passwordHasher,
+    IJwtGenerator _tokenGenerator,
+    ITokenHasher _tokenHasher,
+    IHttpContextAccessor _httpContextAccessor)
+    : IRequestHandler<RegisterUserCommand, ResultOf<AuthenticationResult>>
+{
+    public async Task<ResultOf<AuthenticationResult>> Handle(RegisterUserCommand request, CancellationToken cancellationToken)
+    {
+        try
+        {
+            var exists = await _userRepository.GetByEmailAsync(request.Email, cancellationToken);
+            if (exists != null)
+            {
+                exists.MarkEmailFound();
+                return new AuthenticationResult(exists, "User Exists with the same Email try login.");
+            }
+
+            var userToAdd = User.CreateLocal(request.ShowName, request.FirstName, request.LastName, request.Email, request.Password, _passwordHasher);
+
+            if (userToAdd.IsFailure)
+                return userToAdd.Errors;
+
+            var user = userToAdd.Value;
+            await _userRepository.AddAsync(user, cancellationToken);
+
+            var accessToken = _tokenGenerator.GenerateUserJwt(user);
+
+            var refreshTokenResult = user.GenerateToken(TokenType.RefreshToken, _tokenHasher, out var refreshToken);
+
+            if (refreshTokenResult.IsFailure)
+                return refreshTokenResult.Errors;
+
+            var tokenEntity = refreshTokenResult.Value;
+            await _tokenRepository.AddAsync(tokenEntity, cancellationToken);
+
+
+
+            var refreshTokenCookieOptions = new CookieOptions
+            {
+                Expires = DateTimeOffset.UtcNow.Add(RefreshTokenCookieExpiration),
+                HttpOnly = true,
+                Secure = true,
+                SameSite = SameSiteMode.Strict
+            };
+
+            _httpContextAccessor.HttpContext?.Response.Cookies.Append(RefreshTokenCookieName, refreshToken, refreshTokenCookieOptions);
+
+            return ((AuthenticationResult)
+                new FullAuthenticationResult(user, accessToken, DateTime.UtcNow.AddMinutes(30), refreshToken)).AsDone();
+        }
+        catch (Exception ex)
+        {
+            return Error.Failure(
+                code: "RegisterUserCommandHandler",
+                description: ex.Message
+            );
+        }
+    }
+}

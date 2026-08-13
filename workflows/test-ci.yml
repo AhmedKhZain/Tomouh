@@ -1,0 +1,33 @@
+name: Auth Service Unit Tests CI
+
+on:
+  push:
+    branches:
+      - development
+      - main
+  pull_request:
+    branches:
+      - development
+      - main
+
+jobs:
+  build-and-test:
+    runs-on: ubuntu-latest
+
+    steps:
+    - name: Checkout repository
+      uses: actions/checkout@v4
+
+    - name: Setup .NET SDK
+      uses: actions/setup-dotnet@v4
+      with:
+        dotnet-version: '10.0.x'
+
+    - name: Restore Dependencies
+      run: dotnet restore backend/services/Auth/Auth.slnx
+
+    - name: Build Auth Service
+      run: dotnet build backend/services/Auth/Auth.slnx --no-restore --configuration Release
+
+    - name: Run Auth Unit Tests
+      run: dotnet test backend/services/Auth/Auth.slnx --no-build --configuration Release --verbosity normal

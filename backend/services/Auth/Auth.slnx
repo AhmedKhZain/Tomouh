@@ -1,0 +1,14 @@
+<Solution>
+  <Folder Name="/src/">
+    <Project Path="src/Tomouh.Auth.Api/Tomouh.Auth.Api.csproj" Id="a44226d5-7041-4338-a8f2-da5782c54f4f" />
+    <Project Path="src/Tomouh.Auth.Application/Tomouh.Auth.Application.csproj" Id="408d2fcf-3861-4089-9e9e-751e10c19576" />
+    <Project Path="src/Tomouh.Auth.Contracts/Tomouh.Auth.Contracts.csproj" Id="aa3357ec-8bf1-4620-a9f7-ce9a2041fa04" />
+    <Project Path="src/Tomouh.Auth.Domain/Tomouh.Auth.Domain.csproj" Id="d58e86ad-16f0-4598-bdd1-02224a083bac" />
+    <Project Path="src/Tomouh.Auth.Infrastructure/Tomouh.Auth.Infrastructure.csproj" Id="8644464f-b339-4527-a134-08807f2f9cca" />
+  </Folder>
+  <Folder Name="/tests/">
+    <Project Path="tests/Tomouh.Auth.Domain.UnitTests/Tomouh.Auth.Domain.UnitTests.csproj" Id="69db5320-700a-4b77-a94c-ae8e727a4271" />
+  </Folder>
+  <Project Path="../../shared/Tomouh.Shared.Infrastructure/Tomouh.Shared.Infrastructure.csproj" />
+  <Project Path="../../shared/Tomouh.Shared.Kernel/Tomouh.Shared.Kernel.csproj" />
+</Solution>
