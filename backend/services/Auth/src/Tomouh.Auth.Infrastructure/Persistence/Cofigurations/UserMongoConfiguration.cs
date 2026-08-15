@@ -5,7 +5,7 @@ using Tomouh.Auth.Domain.Enums;
 using Tomouh.Auth.Domain.ValueObjects;
 using Tomouh.Shared.Infrastructure.Features.Persistence;
 
-namespace Tomouh.Auth.Infrastructure.Persistence;
+namespace Tomouh.Auth.Infrastructure.Persistence.Cofigurations;
 
 public class UserMongoConfiguration : IMongoMappingConfiguration
 {
@@ -73,6 +73,7 @@ public class UserMongoConfiguration : IMongoMappingConfiguration
                 // Map Value Objects / Properties
                 cm.GetMemberMap(x => x.Name)?.SetElementName("name");
                 cm.GetMemberMap(x => x.MainEmail)?.SetElementName("mainEmail");
+
                 cm.GetMemberMap(x => x.TFA)?.SetElementName("tfa");
                 cm.GetMemberMap(x => x.Status)?.SetElementName("status");
                 cm.GetMemberMap(x => x.ProfilePhotoPath)?.SetElementName("profilePhotoPath");
@@ -109,7 +110,7 @@ public class UserMongoConfiguration : IMongoMappingConfiguration
 
         // 2. Unique Index for User Email
         var emailKeys = Builders<User>.IndexKeys
-            .Ascending("email.email");
+            .Ascending("mainEmail.email");
 
         var emailIndexOptions = new CreateIndexOptions
         {

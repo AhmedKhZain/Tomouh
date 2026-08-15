@@ -1,56 +1,44 @@
 ﻿using MongoDB.Driver;
-using System.Linq.Expressions;
 using Tomouh.Auth.Domain.Entities;
 using Tomouh.Shared.Kernel.BaseTypes;
 using Tomouh.Shared.Kernel.Features;
+using Tomouh.Shared.Kernel.Outbox;
 
 namespace Tomouh.Auth.Infrastructure.Persistence.Contexts;
 
-/// <summary>
-/// Provides MongoDB database access, aggregate tracking, and <see cref="IUnitOfWork"/> implementation 
-/// specifically tailored for the Auth Microservice.
-/// </summary>
 public class AuthContext : IUnitOfWork, IDisposable, IAsyncDisposable
 {
     private readonly IMongoDatabase _database;
     private IClientSessionHandle? _session;
+    private bool _disposed;
 
     private const string UsersCollectionName = "Users";
+    private const string UserTokensCollectionName = "UserTokens";
+    private const string NotificationLogsCollectionName = "NotificationLogs";
 
-    /// <summary>
-    /// Internal collection of tracked aggregates using reference equality to guarantee safe memory tracking.
-    /// </summary>
-    private readonly HashSet<IAggregate> _trackedEntities = new(ReferenceEqualityComparer.Instance);
+    private readonly HashSet<User> _trackedEntities = new(ReferenceEqualityComparer.Instance);
 
-    /// <summary>
-    /// Initializes a new instance of the <see cref="AuthContext"/> class.
-    /// </summary>
-    /// <param name="database">The MongoDB database interface injected from DI.</param>
     public AuthContext(IMongoDatabase database)
     {
         _database = database ?? throw new ArgumentNullException(nameof(database));
     }
 
-    /// <summary>
-    /// Gets the MongoDB collection dedicated to <see cref="User"/> aggregates.
-    /// </summary>
     public IMongoCollection<User> Users => _database.GetCollection<User>(UsersCollectionName);
 
-    /// <summary>
-    /// Gets the active MongoDB client session handle for transactional operations across repositories.
-    /// </summary>
+    public IMongoCollection<UserToken> UserTokens => _database.GetCollection<UserToken>(UserTokensCollectionName);
+
+    public IMongoCollection<EventOutbox> NotificationLogs => _database.GetCollection<EventOutbox>(NotificationLogsCollectionName);
+
     public IClientSessionHandle? Session => _session;
-
-
 
     #region Auto-Session Transaction Wrappers
 
-    /// <summary>
-    /// Executes InsertOne automatically attaching the active transaction session if available.
-    /// </summary>
-    public async Task InsertOneAsync<TDocument>(IMongoCollection<TDocument> collection, TDocument document, CancellationToken cancellationToken = default)
+    public async Task InsertOneAsync<TDocument>(
+        IMongoCollection<TDocument> collection,
+        TDocument document,
+        CancellationToken cancellationToken = default)
     {
-        if (_session is not null && _session.IsInTransaction)
+        if (_session is { IsInTransaction: true })
         {
             await collection.InsertOneAsync(_session, document, cancellationToken: cancellationToken);
         }
@@ -60,12 +48,13 @@ public class AuthContext : IUnitOfWork, IDisposable, IAsyncDisposable
         }
     }
 
-    /// <summary>
-    /// Executes ReplaceOne automatically attaching the active transaction session if available.
-    /// </summary>
-    public async Task<ReplaceOneResult> ReplaceOneAsync<TDocument>(IMongoCollection<TDocument> collection, FilterDefinition<TDocument> filter, TDocument replacement, CancellationToken cancellationToken = default)
+    public async Task<ReplaceOneResult> ReplaceOneAsync<TDocument>(
+        IMongoCollection<TDocument> collection,
+        FilterDefinition<TDocument> filter,
+        TDocument replacement,
+        CancellationToken cancellationToken = default)
     {
-        if (_session is not null && _session.IsInTransaction)
+        if (_session is { IsInTransaction: true })
         {
             return await collection.ReplaceOneAsync(_session, filter, replacement, cancellationToken: cancellationToken);
         }
@@ -73,15 +62,12 @@ public class AuthContext : IUnitOfWork, IDisposable, IAsyncDisposable
         return await collection.ReplaceOneAsync(filter, replacement, cancellationToken: cancellationToken);
     }
 
-    /// <summary>
-    /// Executes Find FirstOrDefault automatically attaching the active transaction session if available.
-    /// </summary>
     public async Task<TDocument?> FirstOrDefaultAsync<TDocument>(
         IMongoCollection<TDocument> collection,
-        Expression<Func<TDocument, bool>> filter,
+        FilterDefinition<TDocument> filter,
         CancellationToken cancellationToken = default)
     {
-        if (_session is not null && _session.IsInTransaction)
+        if (_session is { IsInTransaction: true })
         {
             return await collection.Find(_session, filter).FirstOrDefaultAsync(cancellationToken);
         }
@@ -89,11 +75,6 @@ public class AuthContext : IUnitOfWork, IDisposable, IAsyncDisposable
         return await collection.Find(filter).FirstOrDefaultAsync(cancellationToken);
     }
 
-
-
-    /// <summary>
-    /// Executes a paginated search query on a MongoDB collection, respecting active transaction sessions.
-    /// </summary>
     public async Task<(List<TDocument> Items, long TotalCount)> GetPagedAsync<TDocument>(
         IMongoCollection<TDocument> collection,
         FilterDefinition<TDocument> filter,
@@ -103,126 +84,117 @@ public class AuthContext : IUnitOfWork, IDisposable, IAsyncDisposable
     {
         var skip = pageIndex * pageSize;
 
-        if (_session is not null && _session.IsInTransaction)
+        if (_session is { IsInTransaction: true })
         {
-            var totalCountTask = collection.CountDocumentsAsync(_session, filter, cancellationToken: cancellationToken);
-            var itemsTask = collection.Find(_session, filter)
+            var totalCount = await collection.CountDocumentsAsync(_session, filter, cancellationToken: cancellationToken);
+            var items = await collection.Find(_session, filter)
                 .Skip(skip)
                 .Limit(pageSize)
                 .ToListAsync(cancellationToken);
 
-            await Task.WhenAll(totalCountTask, itemsTask);
-            return (await itemsTask, await totalCountTask);
+            return (items, totalCount);
         }
         else
         {
-            var totalCountTask = collection.CountDocumentsAsync(filter, cancellationToken: cancellationToken);
-            var itemsTask = collection.Find(filter)
+            var totalCount = await collection.CountDocumentsAsync(filter, cancellationToken: cancellationToken);
+            var items = await collection.Find(filter)
                 .Skip(skip)
                 .Limit(pageSize)
                 .ToListAsync(cancellationToken);
 
-            await Task.WhenAll(totalCountTask, itemsTask);
-            return (await itemsTask, await totalCountTask);
+            return (items, totalCount);
         }
     }
 
     #endregion
 
-
-
-
     #region Aggregate Tracking
 
-    /// <summary>
-    /// Registers an aggregate root to the in-memory change tracker.
-    /// </summary>
-    /// <typeparam name="TEntity">The aggregate root type implementing <see cref="IAggregate"/>.</typeparam>
-    /// <param name="aggregate">The aggregate instance to track.</param>
-    /// <param name="replaceExisting">If <c>true</c>, replaces any existing tracked instance sharing the same identifier in memory.</param>
-    /// <returns><c>true</c> if the aggregate was newly added to the tracker; otherwise, <c>false</c>.</returns>
-    public bool TrackAggregate<TEntity>(TEntity aggregate, bool replaceExisting = false)
-        where TEntity : class, IAggregate
+    public bool TrackAggregate(User aggregate, bool replaceExisting = false)
     {
         if (aggregate is null)
         {
             return false;
         }
 
-        if (aggregate is IEntity entity)
+        var existingTracked = _trackedEntities.FirstOrDefault(e => e.Id == aggregate.Id);
+
+        if (existingTracked is not null)
         {
-            var currentId = entity.GetId();
-
-            var existingTracked = _trackedEntities.FirstOrDefault(e =>
-                e is IEntity trackedEntity && Equals(trackedEntity.GetId(), currentId));
-
-            if (existingTracked is not null)
+            if (ReferenceEquals(existingTracked, aggregate))
             {
-                if (ReferenceEquals(existingTracked, aggregate))
-                {
-                    return false;
-                }
-
-                if (replaceExisting)
-                {
-                    _trackedEntities.Remove(existingTracked);
-                    return _trackedEntities.Add(aggregate);
-                }
-
                 return false;
             }
+
+            if (replaceExisting)
+            {
+                _trackedEntities.Remove(existingTracked);
+                return _trackedEntities.Add(aggregate);
+            }
+
+            return false;
         }
 
         return _trackedEntities.Add(aggregate);
     }
 
-    /// <summary>
-    /// Determines whether the specified aggregate is currently tracked within the session.
-    /// </summary>
-    /// <param name="aggregate">The aggregate root instance to verify.</param>
-    /// <returns><c>true</c> if the aggregate is tracked; otherwise, <c>false</c>.</returns>
-    public bool IsTracked(IAggregate aggregate) => _trackedEntities.Contains(aggregate);
+    public bool IsTracked(User aggregate) => _trackedEntities.Contains(aggregate);
 
-    /// <summary>
-    /// Removes an aggregate from the current change tracker session.
-    /// </summary>
-    /// <param name="aggregate">The aggregate root instance to stop tracking.</param>
-    /// <returns><c>true</c> if the aggregate was removed; otherwise, <c>false</c>.</returns>
-    public bool RemoveEntity(IAggregate aggregate) => _trackedEntities.Remove(aggregate);
+    public bool RemoveEntity(User aggregate) => _trackedEntities.Remove(aggregate);
 
-    /// <summary>
-    /// Retrieves a tracked entity instance matching the specified identifier type and value from memory.
-    /// </summary>
-    /// <typeparam name="T">The entity type implementing <see cref="IEntity{TId}"/>.</typeparam>
-    /// <typeparam name="TId">The type of the entity identifier.</typeparam>
-    /// <param name="id">The unique identifier value of the target entity.</param>
-    /// <returns>The tracked entity instance if found; otherwise, <c>null</c>.</returns>
-    public T? GetTrackedEntity<T, TId>(TId id) where T : class, IEntity<TId>
+    public User? GetTrackedEntity(Guid id)
     {
-        var comparer = EqualityComparer<TId>.Default;
-        return _trackedEntities
-            .OfType<T>()
-            .FirstOrDefault(e => comparer.Equals(e.Id, id));
+        return _trackedEntities.FirstOrDefault(e => e.Id == id);
     }
 
-    /// <summary>
-    /// Retrieves all currently tracked aggregates of a specific type.
-    /// </summary>
-    /// <typeparam name="T">The target aggregate type implementing <see cref="IAggregate"/>.</typeparam>
-    /// <returns>An enumerable sequence of tracked aggregate instances matching type <typeparamref name="T"/>.</returns>
-    public IEnumerable<T> GetTrackedEntities<T>() where T : class, IAggregate
+    public IEnumerable<User> GetTrackedEntities()
     {
-        return _trackedEntities.OfType<T>();
+        return _trackedEntities;
+    }
+
+    public async Task<List<TDocument>> FindListAsync<TDocument>(
+        IMongoCollection<TDocument> collection,
+        FilterDefinition<TDocument> filter,
+        int? limit = null,
+        SortDefinition<TDocument>? sort = null,
+        CancellationToken cancellationToken = default)
+    {
+        var findFluent = _session is { IsInTransaction: true }
+            ? collection.Find(_session, filter)
+            : collection.Find(filter);
+
+        if (sort is not null)
+        {
+            findFluent = findFluent.Sort(sort);
+        }
+
+        if (limit.HasValue)
+        {
+            findFluent = findFluent.Limit(limit.Value);
+        }
+
+        return await findFluent.ToListAsync(cancellationToken);
+    }
+
+    public async Task InsertManyAsync<TDocument>(
+        IMongoCollection<TDocument> collection,
+        IEnumerable<TDocument> documents,
+        CancellationToken cancellationToken = default)
+    {
+        if (_session is { IsInTransaction: true })
+        {
+            await collection.InsertManyAsync(_session, documents, cancellationToken: cancellationToken);
+        }
+        else
+        {
+            await collection.InsertManyAsync(documents, cancellationToken: cancellationToken);
+        }
     }
 
     #endregion
 
     #region Unit Of Work Implementation
 
-    /// <summary>
-    /// Starts a new MongoDB transaction session asynchronously.
-    /// </summary>
-    /// <param name="cancellationToken">Cancellation token to observe while waiting for the session to start.</param>
     public async Task StartTransactionAsync(CancellationToken cancellationToken = default)
     {
         if (_session is not null)
@@ -235,13 +207,9 @@ public class AuthContext : IUnitOfWork, IDisposable, IAsyncDisposable
         _session.StartTransaction();
     }
 
-    /// <summary>
-    /// Commits the active MongoDB transaction session and clears in-memory tracking.
-    /// </summary>
-    /// <param name="cancellationToken">Cancellation token to observe while waiting for the transaction commit.</param>
     public async Task CommitTransactionAsync(CancellationToken cancellationToken = default)
     {
-        if (_session is not null && _session.IsInTransaction)
+        if (_session is { IsInTransaction: true })
         {
             await _session.CommitTransactionAsync(cancellationToken);
             _session.Dispose();
@@ -251,13 +219,9 @@ public class AuthContext : IUnitOfWork, IDisposable, IAsyncDisposable
         _trackedEntities.Clear();
     }
 
-    /// <summary>
-    /// Aborts and rolls back the active MongoDB transaction session and clears in-memory tracking.
-    /// </summary>
-    /// <param name="cancellationToken">Cancellation token to observe while waiting for the transaction abort.</param>
     public async Task RollbackTransactionAsync(CancellationToken cancellationToken = default)
     {
-        if (_session is not null && _session.IsInTransaction)
+        if (_session is { IsInTransaction: true })
         {
             await _session.AbortTransactionAsync(cancellationToken);
             _session.Dispose();
@@ -267,10 +231,6 @@ public class AuthContext : IUnitOfWork, IDisposable, IAsyncDisposable
         _trackedEntities.Clear();
     }
 
-    /// <summary>
-    /// Checks whether any tracked aggregate contains pending domain or integration events.
-    /// </summary>
-    /// <returns><c>true</c> if there are unhandled events; otherwise, <c>false</c>.</returns>
     public bool AnyEvents()
     {
         return _trackedEntities.Any(a =>
@@ -278,10 +238,6 @@ public class AuthContext : IUnitOfWork, IDisposable, IAsyncDisposable
             (a.IntegrationEvents != null && a.IntegrationEvents.Count > 0));
     }
 
-    /// <summary>
-    /// Dequeues and collects all pending Domain Events across all tracked aggregates, clearing their internal queues.
-    /// </summary>
-    /// <returns>A read-only list of collected <see cref="IDomainEvent"/> instances.</returns>
     public IReadOnlyList<IDomainEvent> CollectDomainEvents()
     {
         var domainEvents = new List<IDomainEvent>();
@@ -298,10 +254,6 @@ public class AuthContext : IUnitOfWork, IDisposable, IAsyncDisposable
         return domainEvents.AsReadOnly();
     }
 
-    /// <summary>
-    /// Dequeues and collects all pending Integration Events across all tracked aggregates, clearing their internal queues.
-    /// </summary>
-    /// <returns>A read-only list of collected <see cref="IIntegrationEvent"/> instances.</returns>
     public IReadOnlyList<IIntegrationEvent> CollectIntegrationEvents()
     {
         var integrationEvents = new List<IIntegrationEvent>();
@@ -322,29 +274,45 @@ public class AuthContext : IUnitOfWork, IDisposable, IAsyncDisposable
 
     #region Resource Cleanup
 
-    /// <summary>
-    /// Disposes the underlying MongoDB session handle and releases unmanaged resources.
-    /// </summary>
     public void Dispose()
     {
-        _session?.Dispose();
-        _session = null;
-        _trackedEntities.Clear();
+        Dispose(disposing: true);
+        GC.SuppressFinalize(this);
     }
 
-    /// <summary>
-    /// Asynchronously disposes the underlying MongoDB session handle and releases unmanaged resources.
-    /// </summary>
-    /// <returns>A task representing the asynchronous dispose operation.</returns>
     public async ValueTask DisposeAsync()
+    {
+        await DisposeAsyncCore();
+
+        Dispose(disposing: false);
+        GC.SuppressFinalize(this);
+    }
+
+    protected virtual void Dispose(bool disposing)
+    {
+        if (!_disposed)
+        {
+            if (disposing)
+            {
+                _session?.Dispose();
+                _session = null;
+                _trackedEntities.Clear();
+            }
+
+            _disposed = true;
+        }
+    }
+
+    protected virtual ValueTask DisposeAsyncCore()
     {
         if (_session is not null)
         {
             _session.Dispose();
             _session = null;
         }
+
         _trackedEntities.Clear();
-        await Task.CompletedTask;
+        return ValueTask.CompletedTask;
     }
 
     #endregion

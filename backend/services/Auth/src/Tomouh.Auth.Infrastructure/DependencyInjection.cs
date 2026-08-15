@@ -1,5 +1,4 @@
-﻿using Microsoft.EntityFrameworkCore;
-using Microsoft.Extensions.Configuration;
+﻿using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.IdentityModel.Tokens;
 using MongoDB.Driver;
@@ -53,11 +52,6 @@ public static class DependencyInjection
         });
 
         services.AddScoped<AuthContext>();
-
-        services.AddDbContextFactory<AppSystemSqlDbContext>(options =>
-        {
-            options.UseSqlServer(configuration.GetConnectionString("AppSystemSqlDb"));
-        });
 
         services.AddScoped<IUnitOfWork>(sp => sp.GetRequiredService<AuthContext>());
 
