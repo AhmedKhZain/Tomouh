@@ -15,10 +15,10 @@ namespace Tomouh.Auth.Domain.Enums;
 public class TokenType : SmartEnum<TokenType>
 {
     public TimeSpan Expiration { get; private set; }
-    private static readonly TimeSpan RefreshTokenExpiration = TimeSpan.FromDays(10);
-    private static readonly TimeSpan EmailConfirmationExpiration = TimeSpan.FromMinutes(10);
-    private static readonly TimeSpan PasswordResetExpiration = TimeSpan.FromMinutes(10);
-    private static readonly TimeSpan TwoFactorAuthenticationExpiration = TimeSpan.FromMinutes(10);
+    public static readonly TimeSpan RefreshTokenExpiration = TimeSpan.FromDays(10);
+    public static readonly TimeSpan EmailConfirmationExpiration = TimeSpan.FromMinutes(10);
+    public static readonly TimeSpan PasswordResetExpiration = TimeSpan.FromMinutes(10);
+    public static readonly TimeSpan TwoFactorAuthenticationExpiration = TimeSpan.FromMinutes(10);
 
     public static readonly TokenType RefreshToken = new TokenType("RefreshToken", 1, RefreshTokenExpiration);
     public static readonly TokenType EmailConfirmation = new TokenType("EmailConfirmation", 2, EmailConfirmationExpiration);

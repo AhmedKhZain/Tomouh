@@ -1,4 +1,4 @@
-namespace Tomouh.Auth.Application.Common;
+namespace Tomouh.Auth.Domain.Enums;
 
 public enum AuthProvider
 {

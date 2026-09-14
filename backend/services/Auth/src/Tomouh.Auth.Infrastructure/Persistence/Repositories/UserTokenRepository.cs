@@ -1,4 +1,5 @@
 ﻿using MongoDB.Driver;
+using System.Linq;
 using Tomouh.Auth.Domain.Entities;
 using Tomouh.Auth.Domain.Enums;
 using Tomouh.Auth.Domain.Interfaces;
@@ -26,7 +27,7 @@ public class UserTokenRepository : IUserTokenRepository
     {
         var filter = BuildFilter(tokenHash, userId, tokenType, isUsed, isRevoked, includeExpired);
 
-        return await _context.FirstOrDefaultAsync(_context.UserTokens, filter, cancellationToken);
+        return await _context.FirstOrDefaultAsync(_context.UserTokens, filter, cancellationToken: cancellationToken);
     }
 
     public async Task<IReadOnlyList<UserToken>> GetListAsync(
@@ -37,20 +38,56 @@ public class UserTokenRepository : IUserTokenRepository
         bool includeExpired = false,
         CancellationToken cancellationToken = default)
     {
-        var filter = BuildFilter(null, userId, tokenType, isUsed, isRevoked, includeExpired);
+        Func<IQueryable<UserToken>, IQueryable<UserToken>> queryBuilder = q =>
+        {
+            if (userId.HasValue)
+            {
+                q = q.Where(t => t.UserId == userId.Value);
+            }
 
-        return await _context.FindListAsync(_context.UserTokens, filter, cancellationToken: cancellationToken);
+            if (tokenType is not null)
+            {
+                var type = tokenType;
+                q = q.Where(t => t.TokenType == type);
+            }
+
+            if (isUsed.HasValue)
+            {
+                q = q.Where(t => t.IsUsed == isUsed.Value);
+            }
+
+            if (isRevoked.HasValue)
+            {
+                q = q.Where(t => t.IsRevoked == isRevoked.Value);
+            }
+
+            if (!includeExpired)
+            {
+                var expiration = tokenType?.Expiration ?? TokenType.RefreshToken.Expiration;
+                var cutoff = DateTime.UtcNow.Subtract(expiration);
+                q = q.Where(t => t.CreatedAt >= cutoff);
+            }
+
+            return q;
+        };
+
+        return await _context.FindWithLinqAsync(
+            _context.UserTokens,
+            queryBuilder,
+            track: false,
+            cancellationToken: cancellationToken);
     }
 
     public async Task AddAsync(UserToken token, CancellationToken cancellationToken = default)
     {
-        await _context.InsertOneAsync(_context.UserTokens, token, cancellationToken);
+        await _context.InsertOneAsync(_context.UserTokens, token, cancellationToken: cancellationToken);
     }
 
     public async Task UpdateAsync(UserToken token, CancellationToken cancellationToken = default)
     {
         var filter = Builders<UserToken>.Filter.Eq(t => t.Id, token.Id);
-        await _context.ReplaceOneAsync(_context.UserTokens, filter, token, cancellationToken);
+
+        await _context.ReplaceAsync(_context.UserTokens, filter, token, cancellationToken: cancellationToken);
     }
 
     private FilterDefinition<UserToken> BuildFilter(

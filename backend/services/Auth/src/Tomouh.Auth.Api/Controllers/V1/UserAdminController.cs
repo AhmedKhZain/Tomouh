@@ -7,7 +7,7 @@ using Tomouh.Auth.Application.Commands.RevokePermissionFromProfile;
 using Tomouh.Auth.Application.Commands.SetAccountActivationStatus;
 using Tomouh.Auth.Application.Commands.SetBlockStatus;
 using Tomouh.Auth.Application.Commands.SetCommentingStatus;
-using Tomouh.Auth.Contracts;
+using Tomouh.Auth.Contracts.Requests;
 using Tomouh.Auth.Domain.Enums;
 using Tomouh.Shared.Kernel.Models;
 
@@ -41,7 +41,8 @@ public class UserAdminController : ApiControllerBase
         CancellationToken cancellationToken = default
         )
     {
-        var command = request.ToCommand(userId, idempotencyKey);
+        var command = new SetAccountActivationStatusCommand(
+            userId, request.IsActive, idempotencyKey);
         var result = await _sender.Send(command, cancellationToken);
         return MapResult(result);
     }
@@ -62,7 +63,8 @@ public class UserAdminController : ApiControllerBase
         CancellationToken cancellationToken = default
         )
     {
-        var command = request.ToCommand(userId, idempotencyKey);
+        var command = new SetCommentingStatusCommand(
+            userId, request.IsDisabled, idempotencyKey);
         var result = await _sender.Send(command, cancellationToken);
         return MapResult(result);
     }
@@ -83,7 +85,8 @@ public class UserAdminController : ApiControllerBase
         CancellationToken cancellationToken = default
         )
     {
-        var command = request.ToCommand(userId, idempotencyKey);
+        var command = new SetBlockStatusCommand(
+            userId, request.IsBlocked, idempotencyKey);
         var result = await _sender.Send(command, cancellationToken);
         return MapResult(result);
     }
@@ -105,7 +108,8 @@ public class UserAdminController : ApiControllerBase
         CancellationToken cancellationToken = default
         )
     {
-        var command = request.ToCommand(userId, role, idempotencyKey);
+        var command = new GrantPermissionToProfileCommand(
+            userId, role, request.Permission, idempotencyKey);
         var result = await _sender.Send(command, cancellationToken);
         return MapResult(result);
     }

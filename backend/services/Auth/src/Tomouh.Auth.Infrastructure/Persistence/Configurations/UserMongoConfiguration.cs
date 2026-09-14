@@ -17,8 +17,28 @@ public class UserMongoConfiguration : IMongoMappingConfiguration
     {
         BsonSerializer.TryRegisterSerializer(typeof(Guid), new GuidSerializer(GuidRepresentation.Standard));
         BsonSerializer.TryRegisterSerializer(typeof(Role), new Role.RoleBsonSerializer());
+        BsonSerializer.TryRegisterSerializer(typeof(AccountMetadataType), new EnumSerializer<AccountMetadataType>(BsonType.String));
 
         RegisterBaseMaps();
+
+        if (!BsonClassMap.IsClassMapRegistered(typeof(AccountMetadata)))
+            BsonClassMap.RegisterClassMap<AccountMetadata>(cm =>
+            {
+                cm.AutoMap();
+                cm.GetMemberMap(x => x.Key)?.SetElementName("key");
+                cm.GetMemberMap(x => x.Value)?.SetElementName("value");
+                cm.GetMemberMap(x => x.IsPublic)?.SetElementName("isPublic");
+                cm.GetMemberMap(x => x.MetadataType)?.SetElementName("metadataType");
+                cm.GetMemberMap(x => x.CreatedAt)?.SetElementName("createdAt");
+                ConfigureCreator(cm, new MemberInfo[]
+                {
+                    typeof(AccountMetadata).GetProperty(nameof(AccountMetadata.Key))!,
+                    typeof(AccountMetadata).GetProperty(nameof(AccountMetadata.Value))!,
+                    typeof(AccountMetadata).GetProperty(nameof(AccountMetadata.IsPublic))!,
+                    typeof(AccountMetadata).GetProperty(nameof(AccountMetadata.CreatedAt))!,
+                    typeof(AccountMetadata).GetProperty(nameof(AccountMetadata.MetadataType))!
+                });
+            });
 
         if (!BsonClassMap.IsClassMapRegistered(typeof(ExternalLogin)))
             BsonClassMap.RegisterClassMap<ExternalLogin>(cm =>
@@ -115,13 +135,14 @@ public class UserMongoConfiguration : IMongoMappingConfiguration
                 });
             });
 
-        if (!BsonClassMap.IsClassMapRegistered(typeof(User)))
+if (!BsonClassMap.IsClassMapRegistered(typeof(User)))
             BsonClassMap.RegisterClassMap<User>(cm =>
             {
                 cm.AutoMap();
                 cm.MapMember(GetField<User>("_passwordHash")).SetElementName("passwordHash");
                 cm.MapMember(GetField<User>("_profiles")).SetElementName("profiles");
                 cm.MapMember(GetField<User>("_externalLogins")).SetElementName("externalLogins");
+                cm.MapMember(GetField<User>("_metadata")).SetElementName("metadata");
                 cm.GetMemberMap(x => x.Name)?.SetElementName("name");
                 cm.GetMemberMap(x => x.MainEmail)?.SetElementName("mainEmail");
                 cm.GetMemberMap(x => x.TFA)?.SetElementName("tfa");
@@ -138,6 +159,7 @@ public class UserMongoConfiguration : IMongoMappingConfiguration
                     GetField<User>("_profiles"),
                     GetField<User>("_externalLogins"),
                     typeof(User).GetProperty(nameof(User.ProfilePhotoPath))!,
+                    GetField<User>("_metadata"),
                     typeof(AuditableEntity<Guid>).GetProperty(nameof(AuditableEntity<Guid>.LastUpdate))!,
                     typeof(BaseEntity<Guid>).GetProperty(nameof(BaseEntity<Guid>.CreatedAt))!,
                     typeof(BaseEntity<Guid>).GetProperty(nameof(BaseEntity<Guid>.CreatedBy))!

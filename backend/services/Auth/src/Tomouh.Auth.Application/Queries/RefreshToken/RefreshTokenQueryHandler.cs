@@ -1,7 +1,7 @@
 using MediatR;
 using Microsoft.AspNetCore.Http;
-using Tomouh.Auth.Application.Common;
 using Tomouh.Auth.Application.Interfaces;
+using Tomouh.Auth.Contracts.Responses;
 using Tomouh.Auth.Domain.Enums;
 using Tomouh.Auth.Domain.Interfaces;
 using Tomouh.Shared.Kernel.Extensions;
@@ -25,12 +25,14 @@ public class RefreshTokenQueryHandler(
         {
             var refreshToken = _httpContextAccessor.HttpContext?.Request.Cookies[RefreshTokenCookieName];
 
-            if (string.IsNullOrEmpty(refreshToken))
+            if (string.IsNullOrEmpty(refreshToken) && string.IsNullOrEmpty(request.Token))
             {
                 return AuthenticationErrors.RefreshTokenMissing;
             }
 
-            var hashResult = _tokenHasher.Hash(refreshToken);
+            var token = refreshToken ?? request.Token;
+
+            var hashResult = _tokenHasher.Hash(token);
             if (hashResult.IsFailure)
                 return hashResult.Errors;
 
@@ -83,7 +85,7 @@ public class RefreshTokenQueryHandler(
             _httpContextAccessor.HttpContext?.Response.Cookies.Append(RefreshTokenCookieName, newRefreshToken, refreshTokenCookieOptions);
 
             return ((AuthenticationResult)
-                new FullAuthenticationResult(user, newAccessToken, DateTime.UtcNow.AddMinutes(30), newRefreshToken)).AsDone();
+                new FullAuthenticationResult(user, newAccessToken, DateTime.UtcNow.AddMinutes(30), newRefreshToken, DateTime.UtcNow.AddTicks(TokenType.RefreshTokenExpiration.Ticks))).AsDone();
         }
         catch (Exception ex)
         {

@@ -110,7 +110,8 @@ public class UserProfileManagementTests
         // Assert
         result.IsDone.Should().BeTrue();
         var userProfile = user.Profiles.First(p => p.Role == Role.User);
-        userProfile.Metadata.Should().ContainKey(key).WhoseValue.Should().Be(value);
+        userProfile.Metadata.Should().Contain(m => m.Key == key);
+        userProfile.Metadata.First(m => m.Key == key).Value.Should().Be(value);
     }
 
     [Fact]
@@ -127,7 +128,7 @@ public class UserProfileManagementTests
         // Assert
         result.IsDone.Should().BeTrue();
         var userProfile = user.Profiles.First(p => p.Role == Role.User);
-        userProfile.Metadata.Should().NotContainKey(key);
+        userProfile.Metadata.Should().NotContain(m => m.Key == key);
     }
 
     #endregion

@@ -1,5 +1,6 @@
 using MediatR;
 using Tomouh.Auth.Application.Common;
+using Tomouh.Auth.Contracts.Responses;
 using Tomouh.Auth.Domain.Enums;
 using Tomouh.Auth.Domain.Interfaces;
 using Tomouh.Shared.Kernel.Extensions;

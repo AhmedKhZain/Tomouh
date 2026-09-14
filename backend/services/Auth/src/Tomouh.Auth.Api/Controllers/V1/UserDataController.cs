@@ -2,11 +2,14 @@
 using MediatR;
 using Microsoft.AspNetCore.Mvc;
 using Tomouh.Auth.Api.Filters;
+using Tomouh.Auth.Application.Commands.AddExternalLogin;
+using Tomouh.Auth.Application.Commands.AddOrUpdateProfileMetadata;
+using Tomouh.Auth.Application.Commands.AddProfile;
 using Tomouh.Auth.Application.Commands.ConfirmEmail;
 using Tomouh.Auth.Application.Commands.RemoveExternalLogin;
 using Tomouh.Auth.Application.Commands.RemoveProfileMetadata;
-using Tomouh.Auth.Application.Common;
-using Tomouh.Auth.Contracts;
+using Tomouh.Auth.Application.Commands.UpdateUserData;
+using Tomouh.Auth.Contracts.Requests;
 using Tomouh.Auth.Domain.Enums;
 using Tomouh.Shared.Kernel.Models;
 
@@ -38,7 +41,8 @@ public class UserDataController : ApiControllerBase
         CancellationToken cancellationToken = default
         )
     {
-        var command = request.ToCommand(idempotencyKey);
+        var command = new AddExternalLoginCommand(
+            request.Provider, request.Token, idempotencyKey);
         var result = await _sender.Send(command, cancellationToken);
         return MapResult(result);
     }
@@ -95,7 +99,9 @@ public class UserDataController : ApiControllerBase
         CancellationToken cancellationToken = default
         )
     {
-        var command = request.ToCommand(idempotencyKey);
+        var command = new UpdateUserDataCommand(
+            request.ShowName, request.FirstName, request.LastName,
+            request.Email, idempotencyKey);
         var result = await _sender.Send(command, cancellationToken);
         return MapResult(result);
     }
@@ -114,7 +120,7 @@ public class UserDataController : ApiControllerBase
         CancellationToken cancellationToken = default
         )
     {
-        var command = request.ToCommand(idempotencyKey);
+        var command = new AddProfileCommand(request.Role, idempotencyKey);
         var result = await _sender.Send(command, cancellationToken);
         return MapResult(result);
     }
@@ -134,7 +140,8 @@ public class UserDataController : ApiControllerBase
         CancellationToken cancellationToken = default
         )
     {
-        var command = request.ToCommand(role, idempotencyKey);
+        var command = new AddOrUpdateProfileMetadataCommand(
+            role, request.Key, request.Value, idempotencyKey);
         var result = await _sender.Send(command, cancellationToken);
         return MapResult(result);
     }

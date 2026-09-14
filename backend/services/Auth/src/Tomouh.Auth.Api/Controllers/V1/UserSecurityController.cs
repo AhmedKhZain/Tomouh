@@ -4,7 +4,7 @@ using Microsoft.AspNetCore.Mvc;
 using Tomouh.Auth.Api.Filters;
 using Tomouh.Auth.Application.Commands.ChangePassword;
 using Tomouh.Auth.Application.Commands.ChangeTFAStatus;
-using Tomouh.Auth.Contracts;
+using Tomouh.Auth.Contracts.Requests;
 using Tomouh.Shared.Kernel.Models;
 
 namespace Tomouh.Auth.Api.Controllers.V1;
@@ -35,7 +35,8 @@ public class UserSecurityController : ApiControllerBase
         CancellationToken cancellationToken = default
         )
     {
-        var command = request.ToCommand(idempotencyKey);
+        var command = new ChangeTFAStatusCommand(
+            request.IsEnabled, request.Password, idempotencyKey);
         var result = await _sender.Send(command, cancellationToken);
         return MapResult(result);
     }
@@ -54,7 +55,8 @@ public class UserSecurityController : ApiControllerBase
         CancellationToken cancellationToken = default
         )
     {
-        var command = request.ToCommand(idempotencyKey);
+        var command = new ChangePasswordCommand(
+            request.CurrentPassword, request.NewPassword, idempotencyKey);
         var result = await _sender.Send(command, cancellationToken);
         return MapResult(result);
     }

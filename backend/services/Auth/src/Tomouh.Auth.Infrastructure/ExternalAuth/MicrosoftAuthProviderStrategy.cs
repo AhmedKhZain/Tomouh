@@ -5,6 +5,7 @@ using Microsoft.IdentityModel.Protocols.OpenIdConnect;
 using Microsoft.IdentityModel.Tokens;
 using System.IdentityModel.Tokens.Jwt;
 using Tomouh.Auth.Application.Common;
+using Tomouh.Auth.Domain.Enums;
 using Tomouh.Auth.Application.Interfaces;
 using Tomouh.Auth.Infrastructure.Options;
 

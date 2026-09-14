@@ -1,4 +1,5 @@
 ﻿using MongoDB.Driver;
+using System.Linq;
 using Tomouh.Auth.Domain.Entities;
 using Tomouh.Auth.Domain.Interfaces;
 using Tomouh.Auth.Infrastructure.Persistence.Contexts;
@@ -63,27 +64,54 @@ public class UserRepository : IUserRepository
             ? builder.And(filters)
             : builder.Empty;
 
-        var (items, totalCount) = await _context.GetPagedAsync(
+        Func<IQueryable<User>, IQueryable<User>> queryBuilder = q =>
+        {
+            if (!string.IsNullOrWhiteSpace(searchTerm))
+            {
+                q = q.Where(u =>
+                    u.Name.FirstName.ToLower().Contains(searchTerm.ToLower()) ||
+                    u.Name.LastName.ToLower().Contains(searchTerm.ToLower()) ||
+                    u.MainEmail.Email.ToLower().Contains(searchTerm.ToLower()));
+            }
+
+            if (!string.IsNullOrWhiteSpace(email))
+            {
+                q = q.Where(u => u.MainEmail.Email == email);
+            }
+
+            if (ids is not null && ids.Any())
+            {
+                q = q.Where(u => ids.Contains(u.Id));
+            }
+
+            if (joinedAfter.HasValue)
+            {
+                q = q.Where(u => u.CreatedAt >= joinedAfter.Value);
+            }
+
+            if (joinedBefore.HasValue)
+            {
+                q = q.Where(u => u.CreatedAt <= joinedBefore.Value);
+            }
+
+            return q;
+        };
+
+        var (items, totalCount) = await _context.GetPagedWithLinqAsync(
             _context.Users,
-            combinedFilter,
+            queryBuilder,
             pageIndex,
             pageSize,
-            cancellationToken);
-
-        if (track)
-        {
-            foreach (var user in items)
-            {
-                _context.TrackAggregate(user);
-            }
-        }
+            countFilter: combinedFilter,
+            track: track,
+            cancellationToken: cancellationToken);
 
         return new PagedResult<User>(items, totalCount);
     }
 
     public async Task<User?> GetByIdAsync(Guid id, CancellationToken cancellationToken = default)
     {
-        var trackedUser = _context.GetTrackedEntity(id);
+        var trackedUser = _context.GetTrackedEntities<User>().FirstOrDefault(u => u.Id == id);
         if (trackedUser is not null)
         {
             return trackedUser;
@@ -93,7 +121,7 @@ public class UserRepository : IUserRepository
         var user = await _context.FirstOrDefaultAsync(
             _context.Users,
             filter,
-            cancellationToken);
+            cancellationToken: cancellationToken);
 
         if (user is not null)
         {
@@ -106,7 +134,7 @@ public class UserRepository : IUserRepository
 
     public async Task<User?> GetByEmailAsync(string email, CancellationToken cancellationToken = default)
     {
-        var trackedUser = _context.GetTrackedEntities()
+        var trackedUser = _context.GetTrackedEntities<User>()
             .FirstOrDefault(u => u.MainEmail != null && u.MainEmail.Email.Equals(email, StringComparison.OrdinalIgnoreCase));
 
         if (trackedUser is not null)
@@ -118,7 +146,7 @@ public class UserRepository : IUserRepository
         var user = await _context.FirstOrDefaultAsync(
             _context.Users,
             Filter,
-            cancellationToken);
+            cancellationToken: cancellationToken);
 
         if (user is not null)
         {
@@ -133,7 +161,7 @@ public class UserRepository : IUserRepository
     {
         var subjectIdStr = subjectId?.ToString() ?? string.Empty;
 
-        var trackedUser = _context.GetTrackedEntities()
+        var trackedUser = _context.GetTrackedEntities<User>()
             .FirstOrDefault(u => u.ExternalLogins != null &&
                                  u.ExternalLogins.Any(l => l.Provider == provider && l.SubjectId == subjectIdStr));
 
@@ -147,7 +175,7 @@ public class UserRepository : IUserRepository
         var user = await _context.FirstOrDefaultAsync(
             _context.Users,
             filter,
-            cancellationToken);
+            cancellationToken: cancellationToken);
 
         if (user is not null)
         {
@@ -162,7 +190,7 @@ public class UserRepository : IUserRepository
     {
         _context.TrackAggregate(user);
 
-        await _context.InsertOneAsync(_context.Users, user, cancellationToken);
+        await _context.InsertOneAsync(_context.Users, user, cancellationToken: cancellationToken);
     }
 
     public async Task UpdateAsync(User user, CancellationToken cancellationToken = default)
@@ -171,6 +199,6 @@ public class UserRepository : IUserRepository
 
         var filter = Builders<User>.Filter.Eq(u => u.Id, user.Id);
 
-        await _context.ReplaceOneAsync(_context.Users, filter, user, cancellationToken);
+        await _context.ReplaceAsync(_context.Users, filter, user, cancellationToken: cancellationToken);
     }
 }

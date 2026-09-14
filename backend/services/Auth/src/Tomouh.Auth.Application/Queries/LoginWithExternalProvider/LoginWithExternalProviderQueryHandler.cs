@@ -1,8 +1,8 @@
 using Google.Apis.Auth;
 using MediatR;
 using Microsoft.AspNetCore.Http;
-using Tomouh.Auth.Application.Common;
 using Tomouh.Auth.Application.Interfaces;
+using Tomouh.Auth.Contracts.Responses;
 using Tomouh.Auth.Domain.Enums;
 using Tomouh.Auth.Domain.Interfaces;
 using Tomouh.Shared.Kernel.Extensions;
@@ -12,7 +12,7 @@ using static Tomouh.Auth.Application.Common.AuthenticationCommon;
 
 namespace Tomouh.Auth.Application.Queries.LoginWithExternalProvider;
 
-public sealed class LoginWithExternalProviderCommandHandler(
+public sealed class LoginWithExternalProviderQueryHandler(
     IUserRepository _userRepository,
     IExternalAuthProviderFactory _providerFactory,
     IJwtGenerator _jwtTokenGenerator,
@@ -74,7 +74,7 @@ public sealed class LoginWithExternalProviderCommandHandler(
             _contextAccessor.HttpContext?.Response.Cookies.Append(RefreshTokenCookieName, refreshToken, refreshTokenCookieOptions);
 
             return ((AuthenticationResult)
-                new FullAuthenticationResult(user, token, DateTime.UtcNow.AddMinutes(30), refreshToken)).AsDone();
+                new FullAuthenticationResult(user, token, DateTime.UtcNow.AddMinutes(30), refreshToken, DateTime.UtcNow.AddTicks(TokenType.RefreshTokenExpiration.Ticks))).AsDone();
         }
         catch (InvalidJwtException)
         {

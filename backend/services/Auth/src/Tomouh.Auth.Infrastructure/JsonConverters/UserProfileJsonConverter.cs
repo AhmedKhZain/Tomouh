@@ -4,13 +4,14 @@ using System.Text.Json;
 using System.Text.Json.Serialization;
 using Tomouh.Auth.Domain.Entities;
 using Tomouh.Auth.Domain.Enums;
+using Tomouh.Auth.Domain.ValueObjects;
 
 public class UserProfileJsonConverter : JsonConverter<UserProfile>
 {
     private class UserProfileSurrogate
     {
         public Role Role { get; set; } = null!;
-        public Dictionary<string, string> Metadata { get; set; } = new();
+        public HashSet<AccountMetadata> Metadata { get; set; } = new();
         public List<string> Permissions { get; set; } = new();
         public DateTime CreatedAt { get; set; }
         public DateTime? LastUpdate { get; set; }
@@ -55,7 +56,7 @@ public class UserProfileJsonConverter : JsonConverter<UserProfile>
 
             // Extract private fields
             Metadata = typeof(UserProfile).GetField("_metadata", BindingFlags.NonPublic | BindingFlags.Instance)
-                ?.GetValue(value) as Dictionary<string, string> ?? new(),
+                ?.GetValue(value) as HashSet<AccountMetadata> ?? new(),
 
             Permissions = new List<string>(value.Permissions)
         };

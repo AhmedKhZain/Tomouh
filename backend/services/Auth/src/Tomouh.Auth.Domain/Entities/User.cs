@@ -35,6 +35,9 @@ public class User : AuditableAggregateRoot<Guid>
     private readonly List<UserProfile> _profiles = new();
     public IReadOnlyCollection<UserProfile> Profiles => _profiles.AsReadOnly();
 
+    private readonly HashSet<AccountMetadata> _metadata = new();
+    public IReadOnlyCollection<AccountMetadata> Metadata => _metadata;
+
     // Private Constructor للـ Standard Registration
     // Private Constructor للـ Standard Registration
     private User(
@@ -172,6 +175,7 @@ public class User : AuditableAggregateRoot<Guid>
             List<UserProfile> profiles,
             List<ExternalLogin>? externalLogins,
             string? profilePhotoPath,
+            HashSet<AccountMetadata>? metadata,
             DateTime? lastUpdate,
             DateTime createdAt,
             Guid? createdBy) : base(id, null)
@@ -184,6 +188,7 @@ public class User : AuditableAggregateRoot<Guid>
         ProfilePhotoPath = profilePhotoPath;
         _profiles = profiles ?? new List<UserProfile>();
         _externalLogins = externalLogins ?? new List<ExternalLogin>();
+        _metadata = metadata ?? new HashSet<AccountMetadata>();
         CreatedAt = createdAt;
         LastUpdate = lastUpdate;
         CreatedBy = createdBy;
@@ -344,6 +349,77 @@ public class User : AuditableAggregateRoot<Guid>
         this.MarkUpdated();
 
         return Done.Default;
+    }
+
+    #endregion
+
+    #region General Metadata Management
+
+    /// <summary>
+    /// Adds or updates a general metadata key-value pair on the user and triggers an update audit log event.
+    /// </summary>
+    /// <param name="key">The metadata key configuration entry.</param>
+    /// <param name="value">The metadata value payload linked to the entry key.</param>
+    /// <param name="executedByUserId">The unique identifier of the user performing this action.</param>
+    /// <returns>A result indicating success (Done) or an error if audit logging fails.</returns>
+    public ResultOf<Done> AddOrUpdateMetadata(string key, string value, Guid executedByUserId)
+    {
+        var audit = AuditLog.Create(
+            originalState: this,
+            action: AuditActionType.Update,
+            editedEntityName: NameOfUser,
+            customEntityId: Id.ToString()
+        );
+
+        var existing = _metadata.FirstOrDefault(m => m.Key == key);
+
+        if (existing is not null)
+        {
+            var updated = existing.WithValue(value);
+            _metadata.Remove(existing);
+            _metadata.Add(updated);
+        }
+        else
+        {
+            _metadata.Add(new AccountMetadata(key, value, isPublic: true));
+        }
+
+        audit.SetCreator(executedByUserId);
+        AddIntegrationEvent(new AuditLogedEvent(audit));
+        MarkUpdated();
+
+        return Done.Updated;
+    }
+
+    /// <summary>
+    /// Removes a general metadata key from the user and triggers an update audit log event.
+    /// </summary>
+    /// <param name="key">The metadata key entry configuration to be removed.</param>
+    /// <param name="executedByUserId">The unique identifier of the user performing this action.</param>
+    /// <returns>A result indicating success (Done) or an error if the key metadata entry is not found.</returns>
+    public ResultOf<Done> RemoveMetadata(string key, Guid executedByUserId)
+    {
+        var existing = _metadata.FirstOrDefault(m => m.Key == key);
+
+        if (existing is null)
+        {
+            return UserErrors.MetadataNotFound;
+        }
+
+        var audit = AuditLog.Create(
+            originalState: this,
+            action: AuditActionType.Update,
+            editedEntityName: NameOfUser,
+            customEntityId: Id.ToString()
+        );
+
+        _metadata.Remove(existing);
+
+        audit.SetCreator(executedByUserId);
+        AddIntegrationEvent(new AuditLogedEvent(audit));
+        MarkUpdated();
+
+        return Done.Updated;
     }
 
     #endregion

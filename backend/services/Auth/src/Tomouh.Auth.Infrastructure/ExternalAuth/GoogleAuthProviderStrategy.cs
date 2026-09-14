@@ -1,6 +1,7 @@
 ﻿using Google.Apis.Auth;
 using Microsoft.Extensions.Options;
 using Tomouh.Auth.Application.Common;
+using Tomouh.Auth.Domain.Enums;
 using Tomouh.Auth.Application.Interfaces;
 using Tomouh.Auth.Infrastructure.Options;
 

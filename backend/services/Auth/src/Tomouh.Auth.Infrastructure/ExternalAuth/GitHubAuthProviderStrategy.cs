@@ -3,6 +3,7 @@ using System.Net.Http.Headers;
 using System.Net.Http.Json;
 using System.Text.Json.Serialization;
 using Tomouh.Auth.Application.Common;
+using Tomouh.Auth.Domain.Enums;
 using Tomouh.Auth.Application.Interfaces;
 using Tomouh.Auth.Infrastructure.Options;
 

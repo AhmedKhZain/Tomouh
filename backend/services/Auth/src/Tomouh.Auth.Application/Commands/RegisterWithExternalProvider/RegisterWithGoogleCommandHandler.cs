@@ -1,6 +1,7 @@
 using Google.Apis.Auth;
 using MediatR;
 using Tomouh.Auth.Application.Common;
+using Tomouh.Auth.Contracts.Responses;
 using Tomouh.Auth.Application.Interfaces;
 using Tomouh.Auth.Domain.Entities;
 using Tomouh.Auth.Domain.Interfaces;

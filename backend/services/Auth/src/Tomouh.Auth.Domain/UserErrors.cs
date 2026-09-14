@@ -78,4 +78,8 @@ public static class UserErrors
     public static readonly Error CannotRemoveLastLoginMethod = Error.Conflict(
         code: "User.CannotRemoveLastLoginMethod",
         description: "Cannot remove the last login method (password or external login) from the user account.");
+
+    public static readonly Error MetadataNotFound = Error.NotFound(
+        code: "User.MetadataNotFound",
+        description: "The specified metadata entry was not found.");
 }

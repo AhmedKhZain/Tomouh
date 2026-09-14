@@ -20,6 +20,7 @@ namespace Tomouh.Auth.Infrastructure.JsonConverters
             public string? ProfilePhotoPath { get; set; }
             public List<ExternalLogin> ExternalLogins { get; set; } = new();
             public List<UserProfile> Profiles { get; set; } = new();
+            public HashSet<AccountMetadata> Metadata { get; set; } = new();
         }
 
         public override User? Read(ref Utf8JsonReader reader, Type typeToConvert, JsonSerializerOptions options)
@@ -45,6 +46,7 @@ namespace Tomouh.Auth.Infrastructure.JsonConverters
             typeof(User).GetField("_passwordHash", BindingFlags.NonPublic | BindingFlags.Instance)?.SetValue(user, surrogate.PasswordHash);
             typeof(User).GetField("_externalLogins", BindingFlags.NonPublic | BindingFlags.Instance)?.SetValue(user, surrogate.ExternalLogins);
             typeof(User).GetField("_profiles", BindingFlags.NonPublic | BindingFlags.Instance)?.SetValue(user, surrogate.Profiles);
+            typeof(User).GetField("_metadata", BindingFlags.NonPublic | BindingFlags.Instance)?.SetValue(user, surrogate.Metadata);
 
             return user;
         }
@@ -63,7 +65,8 @@ namespace Tomouh.Auth.Infrastructure.JsonConverters
                 // Extract private fields using reflection
                 PasswordHash = typeof(User).GetField("_passwordHash", BindingFlags.NonPublic | BindingFlags.Instance)?.GetValue(value) as string,
                 ExternalLogins = typeof(User).GetField("_externalLogins", BindingFlags.NonPublic | BindingFlags.Instance)?.GetValue(value) as List<ExternalLogin> ?? new(),
-                Profiles = typeof(User).GetField("_profiles", BindingFlags.NonPublic | BindingFlags.Instance)?.GetValue(value) as List<UserProfile> ?? new()
+                Profiles = typeof(User).GetField("_profiles", BindingFlags.NonPublic | BindingFlags.Instance)?.GetValue(value) as List<UserProfile> ?? new(),
+                Metadata = typeof(User).GetField("_metadata", BindingFlags.NonPublic | BindingFlags.Instance)?.GetValue(value) as HashSet<AccountMetadata> ?? new()
             };
 
             JsonSerializer.Serialize(writer, surrogate, options);

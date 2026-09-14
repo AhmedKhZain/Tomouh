@@ -1,4 +1,5 @@
 ﻿using Tomouh.Auth.Application.Common;
+using Tomouh.Auth.Domain.Enums;
 
 namespace Tomouh.Auth.Application.Interfaces;
 

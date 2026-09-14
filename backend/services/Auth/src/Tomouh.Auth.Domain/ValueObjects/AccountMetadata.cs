@@ -22,14 +22,21 @@ public class AccountMetadata : ValueObject
     }
     [JsonConstructor]
     [BsonConstructor]
-    private AccountMetadata(string key, string value, bool isPublic, DateTime createdAt, string? metadataType = null)
+    private AccountMetadata(string key, string value, bool isPublic, DateTime createdAt, AccountMetadataType? metadataType = null)
     {
         Key = key;
         Value = value;
         IsPublic = isPublic;
-        if (metadataType != null)
-            MetadataType = Enum.Parse<AccountMetadataType>(metadataType);
+        MetadataType = metadataType;
         CreatedAt = createdAt;
+    }
+
+    /// <summary>
+    /// Returns a copy of this metadata entry with the same Key/IsPublic/MetadataType and the provided value.
+    /// </summary>
+    public AccountMetadata WithValue(string value)
+    {
+        return new AccountMetadata(Key, value, IsPublic, MetadataType);
     }
 }
 public enum AccountMetadataType

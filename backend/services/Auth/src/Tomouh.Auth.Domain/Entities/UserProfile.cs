@@ -11,7 +11,7 @@ public class UserProfile : AuditableEntity<Role>
     public Role Role { get; private set; }
 
     private readonly HashSet<AccountMetadata> _metadata = new();
-    public HashSet<AccountMetadata> Metadata => _metadata;
+    public IReadOnlyCollection<AccountMetadata> Metadata => _metadata;
 
     private readonly HashSet<string> _permissions = new(StringComparer.OrdinalIgnoreCase);
     public IReadOnlyCollection<string> Permissions => _permissions;
@@ -23,7 +23,6 @@ public class UserProfile : AuditableEntity<Role>
         : base(role ?? Role.User, createdBy)
     {
         Role = role ?? Role.User;
-        _metadata = new Dictionary<string, string>();
 
         _permissions = new HashSet<string>(Role.Default, StringComparer.OrdinalIgnoreCase);
     }
@@ -34,7 +33,7 @@ public class UserProfile : AuditableEntity<Role>
     [JsonConstructor]
     private UserProfile(
         Role role,
-        Dictionary<string, string>? metadata,
+        HashSet<AccountMetadata>? metadata,
         IEnumerable<string>? permissions,
         DateTime createdAt,
         DateTime? lastUpdate,
@@ -42,7 +41,7 @@ public class UserProfile : AuditableEntity<Role>
         : base(role, createdBy)
     {
         Role = role;
-        _metadata = metadata ?? new Dictionary<string, string>();
+        _metadata = metadata ?? new HashSet<AccountMetadata>();
         _permissions = permissions is not null
             ? new HashSet<string>(permissions, StringComparer.OrdinalIgnoreCase)
             : new HashSet<string>(StringComparer.OrdinalIgnoreCase);
@@ -53,13 +52,27 @@ public class UserProfile : AuditableEntity<Role>
 
     internal void AddOrUpdateMetadata(string key, string value)
     {
-        _metadata[key] = value;
+        var existing = _metadata.FirstOrDefault(m => m.Key == key);
+
+        if (existing is not null)
+        {
+            var updated = existing.WithValue(value);
+            _metadata.Remove(existing);
+            _metadata.Add(updated);
+        }
+        else
+        {
+            _metadata.Add(new AccountMetadata(key, value, isPublic: true));
+        }
+
         MarkUpdated();
     }
 
     internal bool RemoveMetadata(string key)
     {
-        if (_metadata.Remove(key))
+        var existing = _metadata.FirstOrDefault(m => m.Key == key);
+
+        if (existing is not null && _metadata.Remove(existing))
         {
             MarkUpdated();
             return true;

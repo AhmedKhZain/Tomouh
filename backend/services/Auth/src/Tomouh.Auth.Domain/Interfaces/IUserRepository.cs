@@ -9,7 +9,7 @@ public interface IUserRepository
     Task<User?> GetByEmailAsync(string email, CancellationToken cancellationToken = default);
     Task AddAsync(User user, CancellationToken cancellationToken = default);
     Task UpdateAsync(User user, CancellationToken cancellationToken = default);
-    Task<User> GetByProviderSubjectIdAsync(string provider, object subjectId, CancellationToken cancellationToken);
+    Task<User?> GetByProviderSubjectIdAsync(string provider, object subjectId, CancellationToken cancellationToken);
     /// <summary>
     /// Retrieves a paginated list of users filtered by search criteria, email, IDs, and joining date range.
     /// </summary>

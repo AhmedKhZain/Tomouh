@@ -1,5 +1,5 @@
 ﻿using Microsoft.Extensions.DependencyInjection;
-using Tomouh.Auth.Application.Common;
+using Tomouh.Auth.Domain.Enums;
 using Tomouh.Auth.Application.Interfaces;
 
 namespace Tomouh.Auth.Infrastructure.ExternalAuth;

@@ -2,11 +2,15 @@
 using MediatR;
 using Microsoft.AspNetCore.Mvc;
 using Tomouh.Auth.Api.Filters;
+using Tomouh.Auth.Application.Commands.ForgotPassword;
+using Tomouh.Auth.Application.Commands.Register;
+using Tomouh.Auth.Application.Commands.RegisterWithExternalProvider;
 using Tomouh.Auth.Application.Commands.ResetPassword;
 using Tomouh.Auth.Application.Queries.CheckEmailExistence;
 using Tomouh.Auth.Application.Queries.Login;
+using Tomouh.Auth.Application.Queries.LoginWithExternalProvider;
 using Tomouh.Auth.Application.Queries.RefreshToken;
-using Tomouh.Auth.Contracts;
+using Tomouh.Auth.Contracts.Requests;
 using Tomouh.Shared.Kernel.Models;
 
 namespace Tomouh.Auth.Api.Controllers.V1;
@@ -57,7 +61,9 @@ public class AuthUserController : ApiControllerBase
         CancellationToken cancellationToken = default
         )
     {
-        var command = request.ToCommand(idempotencyKey);
+        var command = new RegisterUserCommand(
+            request.ShowName, request.FirstName, request.LastName,
+            request.Email, request.Password, idempotencyKey);
         var result = await _sender.Send(command, cancellationToken);
         return MapResult(result);
     }
@@ -70,10 +76,11 @@ public class AuthUserController : ApiControllerBase
     /// </remarks>
     [HttpPost("login")]
     public async Task<IActionResult> Login(
-        [FromBody] LoginQuery query,
+        [FromBody] LoginRequest request,
         CancellationToken cancellationToken = default
         )
     {
+        var query = new LoginQuery(request.Email, request.Password);
         var result = await _sender.Send(query, cancellationToken);
         return MapResult(result);
     }
@@ -92,7 +99,8 @@ public class AuthUserController : ApiControllerBase
         CancellationToken cancellationToken = default
         )
     {
-        var command = request.ToRegisterCommand(idempotencyKey);
+        var command = new RegisterWithExternalProviderCommand(
+            request.Provider, request.Token, idempotencyKey);
         var result = await _sender.Send(command, cancellationToken);
         return MapResult(result);
     }
@@ -111,7 +119,8 @@ public class AuthUserController : ApiControllerBase
         CancellationToken cancellationToken = default
         )
     {
-        var query = request.ToLoginQuery(idempotencyKey);
+        var query = new LoginWithExternalProviderQuery(
+            request.Provider, request.Token, idempotencyKey);
         var result = await _sender.Send(query, cancellationToken);
         return MapResult(result);
     }
@@ -124,10 +133,11 @@ public class AuthUserController : ApiControllerBase
     /// </remarks>
     [HttpPost("refresh-token")]
     public async Task<IActionResult> RefreshToken(
+        RefreshLoginRequest request,
         CancellationToken cancellationToken = default
         )
     {
-        var command = new RefreshTokenQuery();
+        var command = new RefreshTokenQuery(request.Token);
         var result = await _sender.Send(command, cancellationToken);
         return MapResult(result);
     }
@@ -145,7 +155,7 @@ public class AuthUserController : ApiControllerBase
         CancellationToken cancellationToken = default
         )
     {
-        var command = request.ToCommand(idempotencyKey);
+        var command = new ForgotPasswordCommand(request.Email, idempotencyKey);
         var result = await _sender.Send(command, cancellationToken);
         return MapResult(result);
     }
@@ -164,8 +174,8 @@ public class AuthUserController : ApiControllerBase
         CancellationToken cancellationToken = default
         )
     {
-        var commad = new ResetPasswordCommand(request.Token, request.NewPassword, idempotencyKey);
-        var result = await _sender.Send(commad, cancellationToken);
+        var command = new ResetPasswordCommand(request.Token, request.NewPassword, idempotencyKey);
+        var result = await _sender.Send(command, cancellationToken);
         return MapResult(result);
     }
 }

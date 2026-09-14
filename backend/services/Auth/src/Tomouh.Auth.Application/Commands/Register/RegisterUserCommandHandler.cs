@@ -1,7 +1,7 @@
 ﻿using MediatR;
 using Microsoft.AspNetCore.Http;
-using Tomouh.Auth.Application.Common;
 using Tomouh.Auth.Application.Interfaces;
+using Tomouh.Auth.Contracts.Responses;
 using Tomouh.Auth.Domain.Entities;
 using Tomouh.Auth.Domain.Enums;
 using Tomouh.Auth.Domain.Interfaces;
@@ -62,8 +62,9 @@ public class RegisterUserCommandHandler(
 
             _httpContextAccessor.HttpContext?.Response.Cookies.Append(RefreshTokenCookieName, refreshToken, refreshTokenCookieOptions);
 
+
             return ((AuthenticationResult)
-                new FullAuthenticationResult(user, accessToken, DateTime.UtcNow.AddMinutes(30), refreshToken)).AsDone();
+                new FullAuthenticationResult(user, accessToken, DateTime.UtcNow.AddMinutes(30), refreshToken, DateTime.UtcNow.AddTicks(TokenType.RefreshTokenExpiration.Ticks))).AsDone();
         }
         catch (Exception ex)
         {

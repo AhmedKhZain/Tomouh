@@ -1,4 +1,4 @@
-﻿namespace Tomouh.Auth.Contracts;
+namespace Tomouh.Auth.Contracts.Requests;
 
 public class ConfirmEmailRequest
 {

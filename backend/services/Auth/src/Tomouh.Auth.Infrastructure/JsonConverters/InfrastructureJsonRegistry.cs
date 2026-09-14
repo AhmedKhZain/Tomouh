@@ -10,6 +10,7 @@ namespace Tomouh.Auth.Infrastructure.JsonConverters
             JsonSerializationHelper.AddConverter(new UserJsonConverter());
             JsonSerializationHelper.AddConverter(new Role.RoleJsonConverter());
             JsonSerializationHelper.AddConverter(new UserProfileJsonConverter());
+            JsonSerializationHelper.AddConverter(new NonFlagsEnumConverterFactory());
         }
     }
 }
