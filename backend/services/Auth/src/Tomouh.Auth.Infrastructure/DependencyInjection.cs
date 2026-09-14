@@ -7,6 +7,7 @@ using Tomouh.Auth.Application.Interfaces;
 using Tomouh.Auth.Domain.Interfaces;
 using Tomouh.Auth.Infrastructure.ExternalAuth;
 using Tomouh.Auth.Infrastructure.Identity;
+using Tomouh.Auth.Infrastructure.JsonConverters;
 using Tomouh.Auth.Infrastructure.Options;
 using Tomouh.Auth.Infrastructure.Persistence.Contexts;
 using Tomouh.Auth.Infrastructure.Persistence.Repositories;
@@ -27,6 +28,7 @@ public static class DependencyInjection
         this IServiceCollection services,
         IConfiguration configuration)
     {
+        InfrastructureJsonRegistry.RegisterConverters();
         services
             .AddAuthDatabases(configuration)
             .AddAuthRepositories()
@@ -62,6 +64,7 @@ public static class DependencyInjection
     {
         services.AddScoped<IUserRepository, UserRepository>();
         services.AddScoped<IUserTokenRepository, UserTokenRepository>();
+        services.AddScoped<INotificationLogRepository, NotificationLogRepository>();
 
         return services;
     }

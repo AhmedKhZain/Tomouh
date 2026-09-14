@@ -1,9 +1,10 @@
-﻿using Tomouh.Shared.Kernel.BaseTypes;
+﻿using MongoDB.Bson.Serialization.Attributes;
+using System.Text.Json.Serialization;
+using Tomouh.Shared.Kernel.BaseTypes;
 
 namespace Tomouh.Auth.Domain.ValueObjects;
-#region Value Objects
 
-public class ConfirmedEmail : ValueObject
+public class EmailStatus : ValueObject
 {
     [EqualityComponent]
     public string Email { get; init; }
@@ -13,12 +14,12 @@ public class ConfirmedEmail : ValueObject
 
     public DateTime? ConfirmedAt { get; init; }
 
-    public ConfirmedEmail(string email, bool isEmailConfirmed = false, DateTime? confirmedAt = null)
+    [JsonConstructor]
+    [BsonConstructor]
+    public EmailStatus(string email, bool isEmailConfirmed = false, DateTime? confirmedAt = null)
     {
         Email = email;
         IsEmailConfirmed = isEmailConfirmed;
         ConfirmedAt = confirmedAt;
     }
 }
-
-#endregion

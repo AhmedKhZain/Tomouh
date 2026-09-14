@@ -13,11 +13,7 @@ public static class DependencyInjection
 
         services.AddHttpContextAccessor();
 
-        services.AddControllers()
-            .AddJsonOptions(options =>
-            {
-                options.JsonSerializerOptions.Converters.Add(new NonFlagsEnumConverterFactory());
-            });
+
 
         services.AddOpenApi();
 
@@ -47,7 +43,11 @@ public static class DependencyInjection
             options.GroupNameFormat = "'v'VVV";
             options.SubstituteApiVersionInUrl = true;
         });
-
+        services.AddControllers()
+            .AddJsonOptions(options =>
+            {
+                options.JsonSerializerOptions.Converters.Add(new NonFlagsEnumConverterFactory());
+            });
 
         // نسجل الفلتر بتاعك عادي
         services.AddScoped<IdempotencyHeaderFilter>();

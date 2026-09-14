@@ -8,14 +8,14 @@ namespace Tomouh.Auth.Application.Common;
 [JsonDerivedType(typeof(FullAuthenticationResult), "full")]
 public class AuthenticationResult
 {
-    public Guid UserId { get; init; }
-    public bool Is2FARequired { get; init; }
-    public string Name { get; init; }
-    public string ShowName { get; init; }
-    public bool IsActive { get; init; }
-    public bool IsBlocked { get; init; }
-    public List<string> RolesNames { get; init; }
-    public string? Massege { get; init; } = null;
+    public Guid UserId { get; private set; }
+    public bool Is2FARequired { get; private set; }
+    public string Name { get; private set; }
+    public string ShowName { get; private set; }
+    public bool IsActive { get; private set; }
+    public bool IsBlocked { get; private set; }
+    public List<string> RolesNames { get; private set; }
+    public string? Massege { get; private set; } = null;
 
     public AuthenticationResult(User user, string? massege = null)
     {
@@ -27,6 +27,10 @@ public class AuthenticationResult
         IsBlocked = user.Status.IsBlocked;
         RolesNames = user.Profiles.Select(p => p.Role.Name).ToList();
         Massege = massege;
+    }
+    private AuthenticationResult()
+    {
+
     }
 
 }

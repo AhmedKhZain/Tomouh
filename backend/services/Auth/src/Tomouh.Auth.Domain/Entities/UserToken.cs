@@ -1,10 +1,10 @@
-﻿using Tomouh.Auth.Domain.Enums;
+﻿using MongoDB.Bson.Serialization.Attributes;
+using System.Text.Json.Serialization;
+using Tomouh.Auth.Domain.Enums;
 using Tomouh.Auth.Domain.Interfaces;
 using Tomouh.Shared.Kernel.ResultOf;
 
 namespace Tomouh.Auth.Domain.Entities;
-
-
 
 public class UserToken
 {
@@ -20,6 +20,32 @@ public class UserToken
     public DateTime CreatedAt { get; private set; }
 
     private UserToken() { }
+
+    [BsonConstructor]
+    [JsonConstructor]
+    private UserToken(
+        Guid id,
+        string tokenHash,
+        Guid userId,
+        TokenType tokenType,
+        bool isUsed,
+        DateTime? usedAt,
+        bool isRevoked,
+        TokenRevokeCause? revokeCause,
+        DateTime? revokedAt,
+        DateTime createdAt)
+    {
+        Id = id;
+        TokenHash = tokenHash;
+        UserId = userId;
+        TokenType = tokenType;
+        IsUsed = isUsed;
+        UsedAt = usedAt;
+        IsRevoked = isRevoked;
+        RevokeCause = revokeCause;
+        RevokedAt = revokedAt;
+        CreatedAt = createdAt;
+    }
 
     public static ResultOf<UserToken> Create(
         Guid userId,

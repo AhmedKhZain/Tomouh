@@ -19,7 +19,7 @@ public class NotificationLogRepository : INotificationLogRepository
         var filter = Builders<EventOutbox>.Filter.Empty;
         var sort = Builders<EventOutbox>.Sort.Descending(x => x.CreatedAt);
 
-        return await _context.FindListAsync(_context.NotificationLogs, filter, limit: take, sort: sort, cancellationToken: cancellationToken);
+        return await _context.GetPagedWithLinqAsync(_context.NotificationLogs, filter, take: take, sort: sort, cancellationToken: cancellationToken);
     }
 
     public async Task<IEnumerable<EventOutbox>> GetLogsByUserIdAsync(Guid userId, int take = 20, CancellationToken cancellationToken = default)

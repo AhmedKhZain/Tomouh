@@ -1,6 +1,7 @@
 ﻿using MongoDB.Bson.Serialization.Attributes;
 using System.Text.Json.Serialization;
 using Tomouh.Auth.Domain.Enums;
+using Tomouh.Auth.Domain.ValueObjects;
 using Tomouh.Shared.Kernel.BaseTypes;
 
 namespace Tomouh.Auth.Domain.Entities;
@@ -9,8 +10,8 @@ public class UserProfile : AuditableEntity<Role>
 {
     public Role Role { get; private set; }
 
-    private readonly Dictionary<string, string> _metadata = new();
-    public IReadOnlyDictionary<string, string> Metadata => _metadata.AsReadOnly();
+    private readonly HashSet<AccountMetadata> _metadata = new();
+    public HashSet<AccountMetadata> Metadata => _metadata;
 
     private readonly HashSet<string> _permissions = new(StringComparer.OrdinalIgnoreCase);
     public IReadOnlyCollection<string> Permissions => _permissions;
@@ -24,9 +25,9 @@ public class UserProfile : AuditableEntity<Role>
         Role = role ?? Role.User;
         _metadata = new Dictionary<string, string>();
 
-        // إعطاء الـ Default Permissions للـ Role الجديد
         _permissions = new HashSet<string>(Role.Default, StringComparer.OrdinalIgnoreCase);
     }
+
 
     // Constructor مخصص لـ MongoDB & System.Text.Json Deserialization
     [BsonConstructor]
@@ -75,7 +76,7 @@ public class UserProfile : AuditableEntity<Role>
             MarkUpdated();
             return true;
         }
-        return false; // Permission was already granted
+        return false;
     }
 
     internal bool RevokePermission(string permission)

@@ -28,11 +28,11 @@ public class ExternalLogin : ValueObject
 
     [BsonConstructor]
     [JsonConstructor]
-    public ExternalLogin(string provider, string subjectId, DateTime? linkedAt = null)
+    public ExternalLogin(string provider, string subjectId, DateTime linkedAt)
     {
         Provider = provider;
         SubjectId = subjectId;
-        LinkedAt = linkedAt ?? DateTime.UtcNow;
+        LinkedAt = linkedAt;
     }
 
     public static ExternalLogin Create(string provider, string subjectId)

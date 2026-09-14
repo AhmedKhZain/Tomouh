@@ -1,7 +1,8 @@
-﻿using Tomouh.Shared.Kernel.BaseTypes;
+﻿using MongoDB.Bson.Serialization.Attributes;
+using System.Text.Json.Serialization;
+using Tomouh.Shared.Kernel.BaseTypes;
 
 namespace Tomouh.Auth.Domain.ValueObjects;
-#region Value Objects
 
 public class AccountStatus : ValueObject
 {
@@ -17,7 +18,8 @@ public class AccountStatus : ValueObject
     public bool IsBlocked { get; init; }
 
     public DateTime? BlockedAt { get; init; }
-
+    [JsonConstructor]
+    [BsonConstructor]
     public AccountStatus(
         bool isActive = true,
         bool isCommentingDisabled = false,
@@ -31,6 +33,6 @@ public class AccountStatus : ValueObject
         IsBlocked = isBlocked;
         BlockedAt = blockedAt;
     }
-}
 
-#endregion
+
+}

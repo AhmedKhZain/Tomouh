@@ -13,7 +13,7 @@ public class UserEmailFoundEventHandler(
     public async Task Handle(UserEmailFoundEvent notification, CancellationToken cancellationToken)
     {
         await _cacheService.SetAsync(
-                cacheKey: $"{UserOptimisticLoadingCachePrefix}{notification.User.MainEmail}",
+                cacheKey: $"{UserOptimisticLoadingCachePrefix}{notification.User.MainEmail.Email}",
                 notification.User,
                 expiration: UserOptimisticLoadingCacheExpiration
             );

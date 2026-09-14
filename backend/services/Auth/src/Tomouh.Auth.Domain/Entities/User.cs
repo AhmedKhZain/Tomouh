@@ -17,7 +17,7 @@ public class User : AuditableAggregateRoot<Guid>
 
     public Name Name { get; private set; } = null!;
     public TFAStatus TFA { get; private set; } = null!;
-    public ConfirmedEmail MainEmail { get; private set; } = null!;
+    public EmailStatus MainEmail { get; private set; } = null!;
     public AccountStatus Status { get; private set; } = null!;
 
     // Computed property combining FirstName and LastName dynamically
@@ -49,7 +49,7 @@ public class User : AuditableAggregateRoot<Guid>
         Name = new Name(showName, firstName, lastName);
 
         bool isConfirmed = initialExternalLogin is not null;
-        MainEmail = new ConfirmedEmail(email, isEmailConfirmed: isConfirmed, confirmedAt: isConfirmed ? DateTime.UtcNow : null);
+        MainEmail = new EmailStatus(email, isEmailConfirmed: isConfirmed, confirmedAt: isConfirmed ? DateTime.UtcNow : null);
 
         TFA = new TFAStatus();
         Status = new AccountStatus();
@@ -114,6 +114,7 @@ public class User : AuditableAggregateRoot<Guid>
         );
     }
     public bool CanRemoveLastLogin => !string.IsNullOrWhiteSpace(_passwordHash) || _externalLogins.Count > 1;
+
     private User() : base() { }
 
     #region External Logins Management
@@ -164,7 +165,7 @@ public class User : AuditableAggregateRoot<Guid>
     private User(
             Guid id,
             Name name,
-            ConfirmedEmail email,
+            EmailStatus email,
             TFAStatus tfa,
             AccountStatus status,
             string? passwordHash,
@@ -407,7 +408,7 @@ public class User : AuditableAggregateRoot<Guid>
             return markUsedResult.Errors;
         }
 
-        MainEmail = new ConfirmedEmail(MainEmail.Email, true, DateTime.UtcNow);
+        MainEmail = new EmailStatus(MainEmail.Email, true, DateTime.UtcNow);
         AddIntegrationEvent(new AuditLogedEvent(audit));
         MarkUpdated();
         return Done.Default;
@@ -462,14 +463,14 @@ public class User : AuditableAggregateRoot<Guid>
         audit.SetCreator(Id);
 
         Name = new Name(
-                showName ?? Name.ShowName,
-                firstName ?? Name.FirstName,
-                lastName ?? Name.LastName
+                showName?.Trim() ?? Name.ShowName,
+                firstName?.Trim() ?? Name.FirstName,
+                lastName?.Trim() ?? Name.LastName
             );
 
-        if (email is not null && !email.Equals(MainEmail.Email, StringComparison.OrdinalIgnoreCase))
+        if (email is not null && !email.Equals(MainEmail.Email.Trim(), StringComparison.OrdinalIgnoreCase))
         {
-            MainEmail = new ConfirmedEmail(email, isEmailConfirmed: false, confirmedAt: null);
+            MainEmail = new EmailStatus(email, isEmailConfirmed: false, confirmedAt: null);
         }
 
         MarkUpdated();

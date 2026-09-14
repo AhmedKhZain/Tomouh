@@ -46,4 +46,9 @@ public interface IUnitOfWork
     /// </summary>
     /// <returns>A read-only list of collected <see cref="IIntegrationEvent"/> instances.</returns>
     IReadOnlyList<IIntegrationEvent> CollectIntegrationEvents();
+
+    /// <summary>
+    /// returns if the current unit of work is in a transaction or not.
+    /// </summary>
+    bool IsInTransaction { get; }
 }

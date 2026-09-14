@@ -7,7 +7,7 @@ using Tomouh.Shared.Kernel.Enums;
 
 namespace Tomouh.Auth.Domain.Enums;
 
-[JsonConverter(typeof(RoleJsonConverter))]
+
 public class Role : SmartEnum<Role>
 {
     public string NormalizedLowerCaseName { get; init; }

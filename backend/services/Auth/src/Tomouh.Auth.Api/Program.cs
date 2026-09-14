@@ -1,3 +1,4 @@
+using Scalar.AspNetCore;
 using Tomouh.Auth.Application;
 using Tomouh.Auth.Infrastructure;
 using Tomouh.Auth.Infrastructure.Persistence;
@@ -26,6 +27,19 @@ public class Program
         if (app.Environment.IsDevelopment())
         {
         }
+
+        app.UseSwagger();
+
+        app.UseSwaggerUI(c =>
+        {
+            c.SwaggerEndpoint("/swagger/v1/swagger.json", "Tomouh API v1");
+        });
+
+        app.MapScalarApiReference(options =>
+        {
+            options.WithOpenApiRoutePattern("/swagger/v1/swagger.json");
+        });
+
         app.MapOpenApi();
 
         app.UseHttpsRedirection();

@@ -25,13 +25,13 @@ public class EventsHandlerBehavior<TRequest, TResponse>(
 
         try
         {
-            await unitOfWork.StartTransactionAsync(cancellationToken);
+            //await unitOfWork.StartTransactionAsync(cancellationToken);
 
             var response = await next();
 
             if (response.IsFailure)
             {
-                await unitOfWork.RollbackTransactionAsync(cancellationToken);
+                //await unitOfWork.RollbackTransactionAsync(cancellationToken);
                 return response;
             }
 
@@ -60,13 +60,13 @@ public class EventsHandlerBehavior<TRequest, TResponse>(
                 await notificationLogRepository.InsertAsync(outboxEvents, cancellationToken);
             }
 
-            await unitOfWork.CommitTransactionAsync(cancellationToken);
+            //await unitOfWork.CommitTransactionAsync(cancellationToken);
 
             return response;
         }
         catch
         {
-            await unitOfWork.RollbackTransactionAsync(cancellationToken);
+            //await unitOfWork.RollbackTransactionAsync(cancellationToken);
             throw;
         }
     }
