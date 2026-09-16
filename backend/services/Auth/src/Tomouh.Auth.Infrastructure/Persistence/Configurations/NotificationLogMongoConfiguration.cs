@@ -40,7 +40,7 @@ public class NotificationLogMongoConfiguration : IMongoMappingConfiguration
 
     public static async Task RegisterIndexesAsync(IMongoDatabase database, CancellationToken cancellationToken = default)
     {
-        var notificationLogsCollection = database.GetCollection<EventOutbox>("NotificationLogs");
+        var notificationLogsCollection = database.GetCollection<EventOutbox>("Auth.NotificationLogs");
 
         var keys = Builders<EventOutbox>.IndexKeys
             .Ascending("createdBy")

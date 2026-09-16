@@ -19,8 +19,6 @@ public class UserToken
     public DateTime? RevokedAt { get; private set; }
     public DateTime CreatedAt { get; private set; }
 
-    private UserToken() { }
-
     [BsonConstructor]
     [JsonConstructor]
     private UserToken(
@@ -61,19 +59,17 @@ public class UserToken
             return hashResult.Errors;
         }
 
-        var tokenEntity = new UserToken
-        {
-            Id = Guid.NewGuid(),
-            TokenHash = hashResult.Value,
-            UserId = userId,
-            TokenType = tokenType,
-            IsUsed = false,
-            UsedAt = null,
-            IsRevoked = false,
-            RevokeCause = null,
-            RevokedAt = null,
-            CreatedAt = DateTime.UtcNow
-        };
+        var tokenEntity = new UserToken(
+            id: Guid.NewGuid(),
+            tokenHash: hashResult.Value,
+            userId: userId,
+            tokenType: tokenType,
+            isUsed: false,
+            usedAt: null,
+            isRevoked: false,
+            revokeCause: null,
+            revokedAt: null,
+            createdAt: DateTime.UtcNow);
 
         return tokenEntity;
     }

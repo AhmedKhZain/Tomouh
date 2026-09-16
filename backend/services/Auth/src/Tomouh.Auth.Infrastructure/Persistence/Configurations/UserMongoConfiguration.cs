@@ -16,7 +16,6 @@ public class UserMongoConfiguration : IMongoMappingConfiguration
     public static void Configure()
     {
         BsonSerializer.TryRegisterSerializer(typeof(Guid), new GuidSerializer(GuidRepresentation.Standard));
-        BsonSerializer.TryRegisterSerializer(typeof(Role), new Role.RoleBsonSerializer());
         BsonSerializer.TryRegisterSerializer(typeof(AccountMetadataType), new EnumSerializer<AccountMetadataType>(BsonType.String));
 
         RegisterBaseMaps();
@@ -135,7 +134,7 @@ public class UserMongoConfiguration : IMongoMappingConfiguration
                 });
             });
 
-if (!BsonClassMap.IsClassMapRegistered(typeof(User)))
+        if (!BsonClassMap.IsClassMapRegistered(typeof(User)))
             BsonClassMap.RegisterClassMap<User>(cm =>
             {
                 cm.AutoMap();
@@ -169,7 +168,7 @@ if (!BsonClassMap.IsClassMapRegistered(typeof(User)))
 
     public static async Task RegisterIndexesAsync(IMongoDatabase database, CancellationToken cancellationToken = default)
     {
-        var usersCollection = database.GetCollection<User>("Users");
+        var usersCollection = database.GetCollection<User>("Auth.Users");
 
         var externalLoginKeys = Builders<User>.IndexKeys
             .Ascending("externalLogins.provider")

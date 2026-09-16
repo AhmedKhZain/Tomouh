@@ -1,6 +1,7 @@
 ﻿using FluentAssertions;
 using Tomouh.Auth.Domain.Enums;
 using Tomouh.Auth.Domain.Events;
+using Tomouh.Auth.Domain.ValueObjects;
 
 namespace Tomouh.Auth.Domain.UnitTests;
 
@@ -105,7 +106,7 @@ public class UserProfileManagementTests
         const string value = "Engineering";
 
         // Act
-        var result = user.AddOrUpdateProfileMetadata(Role.User, key, value, _executorId);
+        var result = user.AddOrUpdateProfileMetadata(Role.User, key, value, AccountMetadataType.String, true, _executorId);
 
         // Assert
         result.IsDone.Should().BeTrue();
@@ -120,7 +121,7 @@ public class UserProfileManagementTests
         // Arrange
         var user = UserTestHelpers.CreateDummyUser();
         const string key = "Department";
-        user.AddOrUpdateProfileMetadata(Role.User, key, "Engineering", _executorId);
+        user.AddOrUpdateProfileMetadata(Role.User, key, "Engineering", AccountMetadataType.String, true, _executorId);
 
         // Act
         var result = user.RemoveProfileMetadata(Role.User, key, _executorId);

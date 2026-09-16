@@ -26,6 +26,8 @@ public class AddOrUpdateProfileMetadataCommandHandler(
                 role: request.Role,
                 key: request.Key,
                 value: request.Value,
+                type: request.MetadataType,
+                isPublic: request.IsPublic,
                 executedByUserId: _currentUser.Id.Value);
 
             if (metadataResult.IsFailure)

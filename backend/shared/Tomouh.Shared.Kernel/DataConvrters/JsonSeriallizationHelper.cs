@@ -16,14 +16,17 @@ public static class JsonSerializationHelper
     public static readonly JsonSerializerOptions DefaultOptions = new JsonSerializerOptions
     {
         PropertyNameCaseInsensitive = true,
-        IncludeFields = true, // Note: This includes PUBLIC fields only. Private fields still need Converters or Modifiers.
+        IncludeFields = true, // Includes public and [JsonInclude] private fields
         ReferenceHandler = ReferenceHandler.IgnoreCycles,
         WriteIndented = false
     };
 
     public static void AddConverter(JsonConverter converter)
     {
-        DefaultOptions.Converters.Add(converter);
+        if (!DefaultOptions.Converters.Contains(converter))
+        {
+            DefaultOptions.Converters.Add(converter);
+        }
     }
 
     public static string Serialize<T>(this T? value) where T : IAuditable

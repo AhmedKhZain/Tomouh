@@ -14,6 +14,7 @@ namespace Tomouh.Auth.Domain.Enums;
 [BsonSerializer(typeof(TokenTypeBsonSerializer))]
 public class TokenType : SmartEnum<TokenType>
 {
+    [BsonIgnore]
     public TimeSpan Expiration { get; private set; }
     public static readonly TimeSpan RefreshTokenExpiration = TimeSpan.FromDays(10);
     public static readonly TimeSpan EmailConfirmationExpiration = TimeSpan.FromMinutes(10);

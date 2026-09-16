@@ -12,17 +12,9 @@ public class AccountMetadata : ValueObject
     public bool IsPublic { get; init; }
     public AccountMetadataType? MetadataType { get; init; }
     public DateTime CreatedAt { get; init; }
-    public AccountMetadata(string key, string value, bool isPublic, AccountMetadataType? metadataType = null)
-    {
-        Key = key;
-        Value = value;
-        IsPublic = isPublic;
-        MetadataType = metadataType;
-        CreatedAt = DateTime.UtcNow;
-    }
     [JsonConstructor]
     [BsonConstructor]
-    private AccountMetadata(string key, string value, bool isPublic, DateTime createdAt, AccountMetadataType? metadataType = null)
+    public AccountMetadata(string key, string value, bool isPublic, DateTime createdAt, AccountMetadataType? metadataType = null)
     {
         Key = key;
         Value = value;
@@ -34,9 +26,9 @@ public class AccountMetadata : ValueObject
     /// <summary>
     /// Returns a copy of this metadata entry with the same Key/IsPublic/MetadataType and the provided value.
     /// </summary>
-    public AccountMetadata WithValue(string value)
+    public AccountMetadata WithValue(string value, bool isPublic, AccountMetadataType? metadataType)
     {
-        return new AccountMetadata(Key, value, IsPublic, MetadataType);
+        return new AccountMetadata(Key, value, isPublic, CreatedAt, metadataType);
     }
 }
 public enum AccountMetadataType

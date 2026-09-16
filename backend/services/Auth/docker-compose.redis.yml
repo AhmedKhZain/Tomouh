@@ -6,4 +6,6 @@ services:
     container_name: tomouh-redis
     ports:
       - "6379:6379"
+    volumes:
+      - ./redis-data:/data
     restart: always

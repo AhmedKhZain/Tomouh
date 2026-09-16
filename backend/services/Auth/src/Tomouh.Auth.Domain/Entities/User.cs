@@ -21,21 +21,29 @@ public class User : AuditableAggregateRoot<Guid>
     public AccountStatus Status { get; private set; } = null!;
 
     // Computed property combining FirstName and LastName dynamically
+    [JsonIgnore]
     public string FullName => $"{Name.FirstName} {Name.LastName}";
+    [JsonIgnore]
     public string ShowName => Name.ShowName;
 
 
-    private readonly List<ExternalLogin> _externalLogins = new();
+    private List<ExternalLogin> _externalLogins = new();
+    [JsonPropertyName("externalLogins")]
     public IReadOnlyCollection<ExternalLogin> ExternalLogins => _externalLogins.AsReadOnly();
 
 
     private string? _passwordHash;
+    [JsonInclude]
+    [JsonPropertyName("passwordHash")]
+    private string? PasswordHash => _passwordHash;
     public string? ProfilePhotoPath { get; private set; }
 
-    private readonly List<UserProfile> _profiles = new();
+    private List<UserProfile> _profiles = new();
+    [JsonPropertyName("profiles")]
     public IReadOnlyCollection<UserProfile> Profiles => _profiles.AsReadOnly();
 
-    private readonly HashSet<AccountMetadata> _metadata = new();
+    private HashSet<AccountMetadata> _metadata = new();
+    [JsonPropertyName("metadata")]
     public IReadOnlyCollection<AccountMetadata> Metadata => _metadata;
 
     // Private Constructor للـ Standard Registration
@@ -116,9 +124,8 @@ public class User : AuditableAggregateRoot<Guid>
             initialExternalLogin: externalLogin
         );
     }
+    [JsonIgnore]
     public bool CanRemoveLastLogin => !string.IsNullOrWhiteSpace(_passwordHash) || _externalLogins.Count > 1;
-
-    private User() : base() { }
 
     #region External Logins Management
 
@@ -166,35 +173,34 @@ public class User : AuditableAggregateRoot<Guid>
     [BsonConstructor]
     [JsonConstructor]
     private User(
-            Guid id,
-            Name name,
-            EmailStatus email,
-            TFAStatus tfa,
-            AccountStatus status,
-            string? passwordHash,
-            List<UserProfile> profiles,
-            List<ExternalLogin>? externalLogins,
-            string? profilePhotoPath,
-            HashSet<AccountMetadata>? metadata,
-            DateTime? lastUpdate,
-            DateTime createdAt,
-            Guid? createdBy) : base(id, null)
+        Guid id,
+        Name name,
+        EmailStatus mainEmail,
+        TFAStatus tfa,
+        AccountStatus status,
+        string? passwordHash,
+        IReadOnlyCollection<UserProfile>? profiles,
+        IReadOnlyCollection<ExternalLogin>? externalLogins,
+        string? profilePhotoPath,
+        IReadOnlyCollection<AccountMetadata>? metadata,
+        DateTime? lastUpdate,
+        DateTime createdAt,
+        Guid? createdBy) : base(id, null)
     {
+        Id = id;
         Name = name;
-        MainEmail = email;
+        MainEmail = mainEmail;
         TFA = tfa;
         Status = status;
         _passwordHash = passwordHash;
         ProfilePhotoPath = profilePhotoPath;
-        _profiles = profiles ?? new List<UserProfile>();
-        _externalLogins = externalLogins ?? new List<ExternalLogin>();
-        _metadata = metadata ?? new HashSet<AccountMetadata>();
+        _profiles = profiles?.ToList() ?? new List<UserProfile>();
+        _externalLogins = externalLogins?.ToList() ?? new List<ExternalLogin>();
+        _metadata = metadata is null ? new HashSet<AccountMetadata>() : new HashSet<AccountMetadata>(metadata);
         CreatedAt = createdAt;
         LastUpdate = lastUpdate;
         CreatedBy = createdBy;
     }
-
-
 
     #endregion
 
@@ -297,7 +303,7 @@ public class User : AuditableAggregateRoot<Guid>
     /// <param name="value">The metadata value payload linked to the entry key.</param>
     /// <param name="executedByUserId">The unique identifier of the user performing this action.</param>
     /// <returns>A result indicating success (Done) or an error if the profile is not found.</returns>
-    public ResultOf<Done> AddOrUpdateProfileMetadata(Role role, string key, string value, Guid executedByUserId)
+    public ResultOf<Done> AddOrUpdateProfileMetadata(Role role, string key, string value, AccountMetadataType type, bool isPublic, Guid executedByUserId)
     {
         var profile = _profiles.FirstOrDefault(p => p.Role == role);
         if (profile is null) return UserErrors.ProfileNotFound;
@@ -309,7 +315,7 @@ public class User : AuditableAggregateRoot<Guid>
             customEntityId: $"{this.Id}_{role.NormalizedLowerCaseName}"
         );
 
-        profile.AddOrUpdateMetadata(key, value);
+        profile.AddOrUpdateMetadata(key, value, type, isPublic);
 
         audit.SetCreator(executedByUserId);
         AddIntegrationEvent(new AuditLogedEvent(audit));
@@ -362,7 +368,7 @@ public class User : AuditableAggregateRoot<Guid>
     /// <param name="value">The metadata value payload linked to the entry key.</param>
     /// <param name="executedByUserId">The unique identifier of the user performing this action.</param>
     /// <returns>A result indicating success (Done) or an error if audit logging fails.</returns>
-    public ResultOf<Done> AddOrUpdateMetadata(string key, string value, Guid executedByUserId)
+    public ResultOf<Done> AddOrUpdateMetadata(Role role, string key, string value, AccountMetadataType type, bool isPublic, Guid executedByUserId)
     {
         var audit = AuditLog.Create(
             originalState: this,
@@ -375,13 +381,13 @@ public class User : AuditableAggregateRoot<Guid>
 
         if (existing is not null)
         {
-            var updated = existing.WithValue(value);
+            var updated = existing.WithValue(value, isPublic, type);
             _metadata.Remove(existing);
             _metadata.Add(updated);
         }
         else
         {
-            _metadata.Add(new AccountMetadata(key, value, isPublic: true));
+            _metadata.Add(new AccountMetadata(key, value, isPublic: true, createdAt: DateTime.UtcNow, metadataType: type));
         }
 
         audit.SetCreator(executedByUserId);

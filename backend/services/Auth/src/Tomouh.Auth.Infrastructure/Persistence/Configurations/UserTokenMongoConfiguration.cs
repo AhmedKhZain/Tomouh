@@ -2,9 +2,7 @@ using MongoDB.Bson;
 using MongoDB.Bson.Serialization;
 using MongoDB.Bson.Serialization.Serializers;
 using MongoDB.Driver;
-using System.Reflection;
 using Tomouh.Auth.Domain.Entities;
-using Tomouh.Auth.Domain.Enums;
 using Tomouh.Shared.Infrastructure.Features.Persistence;
 
 namespace Tomouh.Auth.Infrastructure.Persistence.Configurations;
@@ -14,19 +12,11 @@ public class UserTokenMongoConfiguration : IMongoMappingConfiguration
     public static void Configure()
     {
         BsonSerializer.TryRegisterSerializer(typeof(Guid), new GuidSerializer(GuidRepresentation.Standard));
-        BsonSerializer.TryRegisterSerializer(typeof(TokenType), new TokenTypeBsonSerializer());
 
         if (!BsonClassMap.IsClassMapRegistered(typeof(UserToken)))
             BsonClassMap.RegisterClassMap<UserToken>(cm =>
             {
                 cm.AutoMap();
-
-                if (!cm.CreatorMaps.Any())
-                {
-                    var ctor = typeof(UserToken).GetConstructor(BindingFlags.NonPublic | BindingFlags.Instance, null, Type.EmptyTypes, null);
-                    if (ctor is not null)
-                        cm.MapConstructor(ctor);
-                }
 
                 var idMap = cm.GetMemberMap(x => x.Id);
                 idMap?.SetElementName("_id");
@@ -47,7 +37,7 @@ public class UserTokenMongoConfiguration : IMongoMappingConfiguration
 
     public static async Task RegisterIndexesAsync(IMongoDatabase database, CancellationToken cancellationToken = default)
     {
-        var userTokensCollection = database.GetCollection<UserToken>("UserTokens");
+        var userTokensCollection = database.GetCollection<UserToken>("Auth.UserTokens");
 
         var compoundKeys = Builders<UserToken>.IndexKeys
             .Ascending("userId")
@@ -89,35 +79,6 @@ public class UserTokenMongoConfiguration : IMongoMappingConfiguration
                 indexesToCreate,
                 cancellationToken
             );
-        }
-    }
-
-    private sealed class TokenTypeBsonSerializer : SerializerBase<TokenType>
-    {
-        public override void Serialize(BsonSerializationContext context, BsonSerializationArgs args, TokenType value)
-        {
-            if (value is null)
-            {
-                context.Writer.WriteNull();
-                return;
-            }
-            context.Writer.WriteString(value.Name);
-        }
-
-        public override TokenType Deserialize(BsonDeserializationContext context, BsonDeserializationArgs args)
-        {
-            var bsonType = context.Reader.CurrentBsonType;
-            if (bsonType == BsonType.Null)
-            {
-                context.Reader.ReadNull();
-                return null;
-            }
-            if (bsonType == BsonType.String)
-            {
-                var name = context.Reader.ReadString();
-                return TokenType.FromName(name: name, caseSensitive: true);
-            }
-            throw new BsonSerializationException($"Cannot deserialize TokenType from BsonType {bsonType}. Expected String.");
         }
     }
 }

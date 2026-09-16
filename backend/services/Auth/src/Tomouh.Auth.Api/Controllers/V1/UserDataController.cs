@@ -141,7 +141,7 @@ public class UserDataController : ApiControllerBase
         )
     {
         var command = new AddOrUpdateProfileMetadataCommand(
-            role, request.Key, request.Value, idempotencyKey);
+            role, request.Key, request.Value, request.IsPublic, request.MetadataType, idempotencyKey);
         var result = await _sender.Send(command, cancellationToken);
         return MapResult(result);
     }

@@ -1,5 +1,4 @@
-﻿using Tomouh.Auth.Domain.Enums;
-using Tomouh.Shared.Kernel.DataConvrters;
+﻿using Tomouh.Shared.Kernel.DataConvrters;
 
 namespace Tomouh.Auth.Infrastructure.JsonConverters
 {
@@ -7,9 +6,6 @@ namespace Tomouh.Auth.Infrastructure.JsonConverters
     {
         public static void RegisterConverters()
         {
-            JsonSerializationHelper.AddConverter(new UserJsonConverter());
-            JsonSerializationHelper.AddConverter(new Role.RoleJsonConverter());
-            JsonSerializationHelper.AddConverter(new UserProfileJsonConverter());
             JsonSerializationHelper.AddConverter(new NonFlagsEnumConverterFactory());
         }
     }

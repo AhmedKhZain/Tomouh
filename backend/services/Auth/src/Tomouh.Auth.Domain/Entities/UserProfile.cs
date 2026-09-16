@@ -8,12 +8,14 @@ namespace Tomouh.Auth.Domain.Entities;
 
 public class UserProfile : AuditableEntity<Role>
 {
-    public Role Role { get; private set; }
+public Role Role { get; private set; }
 
-    private readonly HashSet<AccountMetadata> _metadata = new();
+    private HashSet<AccountMetadata> _metadata = new();
+    [JsonPropertyName("metadata")]
     public IReadOnlyCollection<AccountMetadata> Metadata => _metadata;
 
-    private readonly HashSet<string> _permissions = new(StringComparer.OrdinalIgnoreCase);
+    private HashSet<string> _permissions = new(StringComparer.OrdinalIgnoreCase);
+    [JsonPropertyName("permissions")]
     public IReadOnlyCollection<string> Permissions => _permissions;
 
     public override Role Id => Role;
@@ -28,41 +30,42 @@ public class UserProfile : AuditableEntity<Role>
     }
 
 
-    // Constructor مخصص لـ MongoDB & System.Text.Json Deserialization
+    // Constructor for MongoDB & System.Text.Json Deserialization
     [BsonConstructor]
     [JsonConstructor]
     private UserProfile(
         Role role,
-        HashSet<AccountMetadata>? metadata,
-        IEnumerable<string>? permissions,
+        IReadOnlyCollection<AccountMetadata>? metadata,
+        IReadOnlyCollection<string>? permissions,
         DateTime createdAt,
         DateTime? lastUpdate,
         Guid? createdBy)
         : base(role, createdBy)
     {
         Role = role;
-        _metadata = metadata ?? new HashSet<AccountMetadata>();
-        _permissions = permissions is not null
-            ? new HashSet<string>(permissions, StringComparer.OrdinalIgnoreCase)
-            : new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+        _metadata = metadata is null ? new HashSet<AccountMetadata>() : new HashSet<AccountMetadata>(metadata);
+        _permissions = permissions is null
+            ? new HashSet<string>(StringComparer.OrdinalIgnoreCase)
+            : new HashSet<string>(permissions, StringComparer.OrdinalIgnoreCase);
 
         CreatedAt = createdAt;
         LastUpdate = lastUpdate;
+        CreatedBy = createdBy;
     }
 
-    internal void AddOrUpdateMetadata(string key, string value)
+    internal void AddOrUpdateMetadata(string key, string value, AccountMetadataType type, bool isPublic)
     {
         var existing = _metadata.FirstOrDefault(m => m.Key == key);
 
         if (existing is not null)
         {
-            var updated = existing.WithValue(value);
+            var updated = existing.WithValue(value, isPublic, type);
             _metadata.Remove(existing);
             _metadata.Add(updated);
         }
         else
         {
-            _metadata.Add(new AccountMetadata(key, value, isPublic: true));
+            _metadata.Add(new AccountMetadata(key, value, isPublic, DateTime.UtcNow, type));
         }
 
         MarkUpdated();
